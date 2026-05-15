@@ -149,6 +149,37 @@ def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> flo
     return input_cost + output_cost
 
 
+def _serialize_anthropic_block(block: Any) -> Dict[str, Any]:
+    """Turn an Anthropic content block into a JSON-safe dict for tracing.
+
+    Handles every block type Anthropic returns today (text, tool_use,
+    server_tool_use, web_search_tool_result, tool_result, thinking). Nested
+    content (e.g. ``web_search_tool_result.content`` is itself a list of
+    citation/result blocks) recurses so the trace has the full payload, not
+    a truncated summary.
+    """
+    out: Dict[str, Any] = {
+        "type": getattr(block, "type", None) or type(block).__name__,
+    }
+    for attr in (
+        "id", "name", "input", "text", "thinking", "signature",
+        "tool_use_id", "content",
+    ):
+        if not hasattr(block, attr):
+            continue
+        val = getattr(block, attr)
+        if attr == "content" and isinstance(val, list):
+            out[attr] = [_serialize_anthropic_block(b) for b in val]
+        elif hasattr(val, "model_dump"):
+            try:
+                out[attr] = val.model_dump()
+            except Exception:
+                out[attr] = str(val)
+        else:
+            out[attr] = val
+    return out
+
+
 def _annotate_anthropic_cache(messages: list[dict]) -> list[dict]:
     """Add cache_control to system message for Anthropic prompt caching."""
     result = []
@@ -573,20 +604,41 @@ class CloudEngine(InferenceEngine):
         resp = self._anthropic_client.messages.create(**create_kwargs)
         elapsed = time.monotonic() - t0
 
-        # Extract text and tool_use blocks from response content
+        # Walk every block in resp.content. Anthropic returns several kinds:
+        #   - text                       (plain assistant text)
+        #   - tool_use                   (model wants the caller to run a tool)
+        #   - server_tool_use            (model invoked a server-side tool,
+        #                                 e.g. web_search; carries the actual
+        #                                 query the model issued)
+        #   - web_search_tool_result     (server-tool result body)
+        #   - tool_result                (caller-side tool result echo)
+        #   - thinking                   (Opus reasoning trace)
+        # We keep everything: a full ``content_blocks`` list for the trace
+        # collector, plus convenience fields ``tool_calls`` (tool_use +
+        # server_tool_use) and ``tool_results`` (web_search_tool_result +
+        # tool_result) for downstream consumers.
         content_parts: list[str] = []
         tool_calls: list[Dict[str, Any]] = []
+        tool_results: list[Dict[str, Any]] = []
+        content_blocks: list[Dict[str, Any]] = []
         for block in resp.content:
-            if getattr(block, "type", None) == "tool_use":
+            btype = getattr(block, "type", None) or type(block).__name__
+            serialized = _serialize_anthropic_block(block)
+            content_blocks.append(serialized)
+            if btype in ("tool_use", "server_tool_use"):
                 tool_calls.append(
                     {
-                        "id": block.id,
-                        "name": block.name,
-                        "arguments": json.dumps(block.input)
-                        if isinstance(block.input, dict)
-                        else str(block.input),
+                        "id": getattr(block, "id", None)
+                        or f"{btype}_{len(tool_calls)}",
+                        "name": getattr(block, "name", ""),
+                        "arguments": json.dumps(getattr(block, "input", None))
+                        if isinstance(getattr(block, "input", None), dict)
+                        else str(getattr(block, "input", "")),
+                        "server_side": btype == "server_tool_use",
                     }
                 )
+            elif btype in ("web_search_tool_result", "tool_result"):
+                tool_results.append(serialized)
             elif hasattr(block, "text"):
                 content_parts.append(block.text)
 
@@ -605,10 +657,13 @@ class CloudEngine(InferenceEngine):
             "finish_reason": resp.stop_reason or "stop",
             "cost_usd": estimate_cost(model, prompt_tokens, completion_tokens),
             "ttft": elapsed,
+            "content_blocks": content_blocks,
         }
 
         if tool_calls:
             result["tool_calls"] = tool_calls
+        if tool_results:
+            result["tool_results"] = tool_results
 
         return result
 
