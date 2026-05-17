@@ -13,7 +13,7 @@
  *     is disabled, or when the SDK throws — must never break the UI.
  *
  * Opt-out matches the backend: if /identity returns enabled=false
- * (DO_NOT_TRACK config flag, or env override), the SDK is never
+ * (analytics disabled in config), the SDK is never
  * initialized and track() becomes a no-op.
  */
 

@@ -9,13 +9,10 @@ No email, no name, no hardware fingerprint — just an opaque UUID.
 
 from __future__ import annotations
 
-import os
 import uuid
 from pathlib import Path
 
 from openjarvis.core.config import AnalyticsConfig
-
-_DNT_TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
 def get_or_create_anon_id(path: Path | str) -> str:
@@ -48,13 +45,5 @@ def reset_anon_id(path: Path | str) -> str:
 
 
 def is_analytics_enabled(cfg: AnalyticsConfig) -> bool:
-    """Return True only if every opt-out path is unset.
-
-    Precedence (off wins):
-      1. ``DO_NOT_TRACK`` env var with a truthy value
-      2. ``[analytics] enabled = false`` in config
-      3. Default: on
-    """
-    if os.environ.get("DO_NOT_TRACK", "").strip().lower() in _DNT_TRUTHY:
-        return False
+    """Return True if analytics is enabled in config."""
     return cfg.enabled

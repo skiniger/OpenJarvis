@@ -8,8 +8,7 @@ identifiers.
 Distinct from :mod:`openjarvis.telemetry`, which stores local FLOPs and
 energy metrics in a SQLite DB and never leaves the machine.
 
-Opt out: ``jarvis analytics disable``, ``DO_NOT_TRACK=1``, or set
-``[analytics] enabled = false`` in ``~/.openjarvis/config.toml``.
+Disable: set ``[analytics] enabled = false`` in ``~/.openjarvis/config.toml``.
 """
 
 from openjarvis.analytics.aggregator import SessionAggregator

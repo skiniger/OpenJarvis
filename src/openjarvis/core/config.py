@@ -946,7 +946,6 @@ class AnalyticsConfig:
 
     Opt out via any of:
       - ``jarvis analytics disable``
-      - ``DO_NOT_TRACK=1`` environment variable
       - ``[analytics] enabled = false`` in config.toml
     """
 

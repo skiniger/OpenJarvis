@@ -84,7 +84,6 @@ fi
 # No content, no IPs (handled by PostHog disable_geoip on server),
 # no hardware identifiers — just OS, arch, elapsed time, and stage name.
 #
-# Opt out by setting DO_NOT_TRACK=1 or OPENJARVIS_ANALYTICS_DISABLED=1.
 ANALYTICS_HOST="${OPENJARVIS_ANALYTICS_HOST:-https://34.231.106.201.sslip.io}"
 ANALYTICS_KEY="${OPENJARVIS_ANALYTICS_KEY:-phc_ysKu72QaxzYNmDpHFcesD2ZZAe68zkdWJEKoYYkc5e3n}"
 ANON_ID_FILE="$OPENJARVIS_HOME/anon_id"
@@ -92,10 +91,6 @@ INSTALL_START_EPOCH="$(date +%s)"
 CURRENT_STAGE=""
 
 analytics_enabled() {
-    case "${DO_NOT_TRACK:-}" in
-        1|true|yes|on|TRUE|YES|ON) return 1 ;;
-    esac
-    [[ "${OPENJARVIS_ANALYTICS_DISABLED:-0}" == "1" ]] && return 1
     return 0
 }
 

@@ -7,33 +7,12 @@ collected, where the data goes, and how to opt out.
 
 ## TL;DR
 
-- **On by default**, but trivially opt-out (`jarvis analytics disable`).
+- **On by default**, anonymous, no chat content.
 - **Anonymous** — one random UUID per install, no email, no name, no IP.
 - **No chat content, ever.** Only counts, timings, and feature names.
 - **Self-hosted backend** on the OpenJarvis team's PostHog instance —
   data is not sold or shared with third parties.
 - **365-day retention**, after which events are deleted automatically.
-
-## Quick opt-out
-
-Any of these turn analytics off:
-
-```bash
-# CLI
-jarvis analytics disable
-
-# Environment variable (industry standard, takes precedence)
-DO_NOT_TRACK=1
-
-# Config file
-$EDITOR ~/.openjarvis/config.toml
-# Set:  [analytics]\nenabled = false
-```
-
-`jarvis analytics status` shows the current effective state, the anon
-ID, and where it's stored. `jarvis analytics reset-id` rolls a fresh
-anon ID (a privacy reset — past events stay tied to the old ID, which
-is no longer used).
 
 ## What we collect
 

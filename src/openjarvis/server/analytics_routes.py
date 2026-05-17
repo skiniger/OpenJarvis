@@ -37,7 +37,7 @@ router = APIRouter(prefix="/v1/analytics", tags=["analytics"])
 def get_identity() -> AnalyticsIdentity:
     """Return the analytics identity for the current install.
 
-    If analytics is disabled (config or DO_NOT_TRACK), still return a
+    If analytics is disabled in config, still return a
     structurally valid response with ``enabled=False`` so the frontend
     can decide what to do; never throw.
     """
