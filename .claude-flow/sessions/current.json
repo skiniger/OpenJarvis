@@ -1,0 +1,12 @@
+{
+  "id": "session-1781045904420",
+  "startedAt": "2026-06-09T22:58:24.420Z",
+  "cwd": "/Users/kinggeorge/projects/open-jarvis",
+  "context": {},
+  "metrics": {
+    "edits": 5,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  }
+}

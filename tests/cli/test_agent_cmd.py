@@ -76,6 +76,10 @@ class TestNewAgentCommands:
         result = CliRunner().invoke(cli, ["agents", "messages", "--help"])
         assert result.exit_code == 0
 
+    def test_types_help(self) -> None:
+        result = CliRunner().invoke(cli, ["agents", "types", "--help"])
+        assert result.exit_code == 0
+
     def test_agents_group_has_new_commands(self) -> None:
         result = CliRunner().invoke(cli, ["agents", "--help"])
         assert result.exit_code == 0
@@ -93,6 +97,7 @@ class TestNewAgentCommands:
             "ask",
             "instruct",
             "messages",
+            "types",
         )
         for cmd in cmds:
             assert cmd in result.output, f"Missing command: {cmd}"

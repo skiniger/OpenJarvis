@@ -1,0 +1,57 @@
+# macOS Assistant — Native macOS control via AppleScript and system tools
+# Copy to ~/.openjarvis/config.toml and customize
+#
+# Provides: Finder control, notifications, clipboard, volume, text-to-speech,
+#           system monitoring, and AppleScript execution.
+#
+# Requirements:
+#   - macOS (Intel or Apple Silicon)
+#   - psutil: uv pip install psutil
+#   - Optional: Ollama or any OpenJarvis-compatible inference engine
+
+[engine]
+default = "ollama"
+
+[intelligence]
+default_model = "qwen3.5:9b"
+# default_model = "claude-3-sonnet"   # Requires ANTHROPIC_API_KEY
+
+[agent]
+default_agent = "orchestrator"       # Multi-turn reasoning with tool selection
+# default_agent = "native_react"     # ReAct loop for simpler workflows
+
+[tools]
+enabled = [
+    "macos_command",
+    "shell_exec",
+    "code_interpreter",
+    "file_read",
+    "file_write",
+    "web_search",
+    "llm_tool",
+]
+
+# ─── macOS Command Skill ────────────────────────────────────
+
+# The macos_command skill is auto-discovered from ./skills/macos_command/
+# when running from the project root. To install system-wide:
+#   cp -r skills/macos_command ~/.openjarvis/skills/
+
+# ─── Optional: TTS for audible confirmations ──────────────
+
+# Uncomment to enable spoken feedback from the assistant:
+# [tts]
+# backend = "openai"                   # or "cartesia"
+# voice_id = "alloy"                   # OpenAI voice
+# speed = 1.0
+
+# ─── Optional: Scheduled system monitor ─────────────────────
+
+# Uncomment to run system health checks on a schedule:
+# [scheduler]
+# enabled = true
+# [[scheduler.jobs]]
+# name = "system_health_check"
+# schedule = "0 */6 * * *"             # Every 6 hours
+# agent = "simple"
+# prompt = "Use the macos_command tool to check system_info and send a notification if disk usage is above 80%."

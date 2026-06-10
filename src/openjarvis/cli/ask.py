@@ -257,6 +257,10 @@ def _build_tools(
     model_name: str,
     *,
     channel=None,
+    bus=None,
+    temperature=None,
+    max_tokens=None,
+    capability_policy=None,
 ):
     """Instantiate tool objects from names.
 
@@ -304,6 +308,17 @@ def _build_tools(
             tools.append(tool_cls(channel=channel))
         elif name == "llm":
             tools.append(tool_cls(engine=engine, model=model_name))
+        elif name == "agent_delegate":
+            tools.append(
+                tool_cls(
+                    engine=engine,
+                    model=model_name,
+                    bus=bus,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    capability_policy=capability_policy,
+                )
+            )
         elif name == "file_read":
             tools.append(tool_cls())
         else:
@@ -342,7 +357,16 @@ def _run_agent(
         # Trigger tool registration
         import openjarvis.tools  # noqa: F401
 
-        tools = _build_tools(tool_names, config, engine, model_name)
+        tools = _build_tools(
+            tool_names,
+            config,
+            engine,
+            model_name,
+            bus=bus,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            capability_policy=capability_policy,
+        )
 
     # Build agent with appropriate kwargs
     agent_kwargs = {
@@ -377,7 +401,30 @@ def _run_agent(
     agent = agent_cls(engine, model_name, **agent_kwargs)
     ctx = AgentContext()
 
-    # Inject memory context into conversation if available
+    # Agent-specific persistent memory
+    memory_manager = None
+    if config.agent.persist_agent_memory:
+        try:
+            from openjarvis.agents.memory import AgentMemoryManager
+
+            memory_manager = AgentMemoryManager()
+        except Exception as exc:
+            logger.debug("Agent memory manager unavailable: %s", exc)
+
+    # Inject relevant past turns from agent memory
+    if memory_manager is not None:
+        try:
+            past_turns = memory_manager.retrieve_turns(agent_name, query_text, top_k=3)
+            if past_turns:
+                from openjarvis.tools.storage.context import build_context_message
+
+                ctx_msg = build_context_message(past_turns)
+                # Prepend as system context
+                ctx.conversation.add(ctx_msg)
+        except Exception as exc:
+            logger.debug("Failed to inject agent memory: %s", exc)
+
+    # Inject global memory context into conversation if available
     if config.agent.context_from_memory:
         try:
             from openjarvis.tools.storage.context import ContextConfig, inject_context
@@ -400,7 +447,17 @@ def _run_agent(
         except Exception as exc:
             logger.warning("Failed to inject memory context for agent: %s", exc)
 
-    return agent.run(query_text, context=ctx)
+    result = agent.run(query_text, context=ctx)
+
+    # Persist this interaction for future sessions
+    if memory_manager is not None:
+        try:
+            memory_manager.store_turn(agent_name, "user", query_text)
+            memory_manager.store_turn(agent_name, "assistant", result.content)
+        except Exception as exc:
+            logger.debug("Failed to persist agent memory: %s", exc)
+
+    return result
 
 
 def _print_profile(
@@ -553,9 +610,22 @@ def _print_profile(
     "agent_name",
     default=None,
     help=(
-        "Agent to use (simple, orchestrator, ...). "
+        "Agent to use. "
+        "Built-in: simple, orchestrator, native_react, rlm, claude_code, operative, "
+        "monitor, monitor_operative, deep_research, morning_digest, proactive_agent. "
+        "Domain: bavaria_booking, legal_assistant, marketing_assistant, "
+        "operations_assistant, security_assistant. "
         "When omitted, falls back to ``agent.default_agent`` from config. "
         "Pass ``--agent ''`` to force direct-to-engine mode (no agent)."
+    ),
+)
+@click.option(
+    "--chain",
+    "chain_spec",
+    default=None,
+    help=(
+        "A2A chain spec: comma-separated agent ids."
+        " Example: bavaria_booking,legal_assistant"
     ),
 )
 @click.option(
@@ -600,6 +670,7 @@ def ask(
     no_stream: bool,
     no_context: bool,
     agent_name: str | None,
+    chain_spec: str | None,
     tool_names: str | None,
     enable_profile: bool,
     research_mode: bool,
@@ -621,10 +692,26 @@ def ask(
     # Without this fallback, `[agent].default_system_prompt` and the
     # SOUL.md / MEMORY.md / USER.md persona system are silently bypassed for
     # the most common command (`jarvis ask "..."`).
+    routed = False
     if agent_name is None:
         configured_default = (config.agent.default_agent or "").strip()
         if configured_default:
             agent_name = configured_default
+        else:
+            # Intelligent routing: auto-dispatch to the best domain agent
+            from openjarvis.routing import AgentRouter
+
+            router = AgentRouter()
+            route_result = router.route(query_text)
+            if route_result.method != "fallback":
+                agent_name = route_result.agent_id
+                routed = True
+                logger.debug(
+                    "routing: dispatched to %s (confidence=%.2f, method=%s)",
+                    route_result.agent_id,
+                    route_result.confidence,
+                    route_result.method,
+                )
 
     # Track whether the user explicitly set --max-tokens
     user_set_max_tokens = max_tokens is not None
@@ -750,6 +837,49 @@ def ask(
             model_name,
         )
 
+    # ------------------------------------------------------------------
+    # A2A Chain mode — sequential multi-agent pipeline
+    # ------------------------------------------------------------------
+    if chain_spec:
+        try:
+            from openjarvis.routing import A2AChain
+
+            chain = A2AChain.from_string(
+                chain_spec,
+                engine,
+                model_name,
+                bus=bus,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                capability_policy=sec.capability_policy,
+            )
+            result = chain.run(query_text)
+        except Exception as exc:
+            console.print(f"[red]Chain error:[/red] {exc}")
+            sys.exit(1)
+
+        if output_json:
+            click.echo(
+                json_mod.dumps(
+                    {
+                        "content": result.content,
+                        "turns": result.turns,
+                        "metadata": result.metadata,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            console.print(f"[dim]→ A2A chain: {chain_spec}[/dim]")
+            click.echo(result.content)
+
+        if telem_store is not None:
+            try:
+                telem_store.close()
+            except Exception as exc:
+                logger.debug("Error closing telemetry store: %s", exc)
+        return
+
     # Agent mode (treat empty-string `--agent ""` as explicit opt-out)
     if agent_name:
         parsed_tools = resolve_tool_names(
@@ -794,6 +924,10 @@ def ask(
                 )
             )
         else:
+            if routed and not quiet:
+                console.print(
+                    f"[dim]→ Routed to {agent_name} (auto-dispatch)[/dim]"
+                )
             click.echo(result.content)
 
         if enable_profile:

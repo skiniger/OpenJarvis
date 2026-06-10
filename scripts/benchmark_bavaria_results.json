@@ -1,0 +1,92 @@
+[
+  {
+    "model": "gemma3:1b",
+    "prompt_id": "pricing",
+    "duration_sec": 5.919111584000348,
+    "tokens_per_sec": 33.78885448630668,
+    "content": "Die Kosten für ein Doppelzimmer in einem Landhaus Bavaria während der Hauptsaisons (typischerweise Juli, August und September) können stark variieren. Hier ist eine Aufschlüsselung von den ungefähren Preisen, die Sie erwarten können:\n\n**Durchschnittliche Preise (ungefähr):**\n\n* **Juli/August:** 120 ",
+    "keyword_hits": 1,
+    "keyword_score": 0.3333333333333333
+  },
+  {
+    "model": "gemma3:1b",
+    "prompt_id": "legal",
+    "duration_sec": 3.354505541996332,
+    "tokens_per_sec": 59.62130558322944,
+    "content": "Das ist eine gute Frage! Die Antwort ist: **Ja, ein kleines Hotel in Deutschland muss in der Regel einen Datenschutzbeauftragten benennen.**\n\nHier ist die detaillierte Erklärung und einige wichtige Punkte:\n\n**1. Gesetzliche Verpflichtung:**\n\n*   **Datenschutzgrundverordnung (DSGVO):** Die DSGVO verp",
+    "keyword_hits": 2,
+    "keyword_score": 0.6666666666666666
+  },
+  {
+    "model": "gemma3:1b",
+    "prompt_id": "marketing",
+    "duration_sec": 3.5319006249992526,
+    "tokens_per_sec": 56.626734791000054,
+    "content": "Absolut! Hier sind ein paar Optionen für einen Newsletter-Einleitungstext für eine Sommerkampagne im Bayerischen Wald, mit unterschiedlichen Schwerpunkten:\n\n**Option 1 (Kurz & knackig):**\n\n> Herzlich willkommen zu unserer Sommerkampagne im Bayerischen Wald! Lass dich von der Natur in ihrem schönsten",
+    "keyword_hits": 2,
+    "keyword_score": 0.6666666666666666
+  },
+  {
+    "model": "gemma3:1b",
+    "prompt_id": "operations",
+    "duration_sec": 3.5162896670008195,
+    "tokens_per_sec": 56.87813546106052,
+    "content": "Die Häufigkeit der Reinigung eines Hotelszimmers in einem 3-Stern-Haus kann stark variieren, aber hier ist eine grobe Richtlinie und die Faktoren, die zu berücksichtigen sind:\n\n**Allgemeine Empfehlung:** **Mindestens 2x pro Woche** für ein Standardzimmer.  In einigen Fällen könnte man es auch auf **",
+    "keyword_hits": 2,
+    "keyword_score": 0.6666666666666666
+  },
+  {
+    "model": "gemma3:1b",
+    "prompt_id": "security",
+    "duration_sec": 3.3371570000017527,
+    "tokens_per_sec": 59.93125285981299,
+    "content": "Die OWASSO-Top-10-Risiken für Next.js-Websites sind ein wichtiger Rahmen, um Sicherheitslücken zu identifizieren und zu beheben. Hier ist eine detaillierte Aufschlüsselung der besonders relevanten Risiken für Next.js:\n\n**1.  Injection (SQL, NoSQL, Command Injection):**\n\n* **Warum wichtig:** Next.js ",
+    "keyword_hits": 1,
+    "keyword_score": 0.3333333333333333
+  },
+  {
+    "model": "qwen3.5:0.8b",
+    "prompt_id": "pricing",
+    "duration_sec": 12.42996379199758,
+    "tokens_per_sec": 16.0901514555304,
+    "content": "",
+    "keyword_hits": 0,
+    "keyword_score": 0.0
+  },
+  {
+    "model": "qwen3.5:0.8b",
+    "prompt_id": "legal",
+    "duration_sec": 3.97061104200111,
+    "tokens_per_sec": 50.370081049088085,
+    "content": "",
+    "keyword_hits": 0,
+    "keyword_score": 0.0
+  },
+  {
+    "model": "qwen3.5:0.8b",
+    "prompt_id": "marketing",
+    "duration_sec": 3.954134667001199,
+    "tokens_per_sec": 50.57996675456662,
+    "content": "",
+    "keyword_hits": 0,
+    "keyword_score": 0.0
+  },
+  {
+    "model": "qwen3.5:0.8b",
+    "prompt_id": "operations",
+    "duration_sec": 3.8936238329988555,
+    "tokens_per_sec": 51.366030355829395,
+    "content": "",
+    "keyword_hits": 0,
+    "keyword_score": 0.0
+  },
+  {
+    "model": "qwen3.5:0.8b",
+    "prompt_id": "security",
+    "duration_sec": 3.880640916999255,
+    "tokens_per_sec": 51.53787847875707,
+    "content": "",
+    "keyword_hits": 0,
+    "keyword_score": 0.0
+  }
+]

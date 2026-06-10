@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat mit Jarvis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #e9ecef;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            width: 100%;
+            max-width: 600px;
+            font-size: 16px;
+            line-height: 1.5;
+            min-height: 50px;
+        }
+        .message h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .message strong {
+            color: #007bff;
+        }
+        .status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat mit Jarvis</h1>
+
+    <textarea id="userMessage" placeholder="Schreibe eine Nachricht zu Jarvis..."></textarea>
+
+    <button id="sendBtn">Schicken</button>
+
+    <div class="message">
+        <strong id="label">Status:</strong> <span id="receivedMessage">Warte auf Nachricht...</span>
+    </div>
+
+    <div class="status">Status: <span id="statusText">Aktiv</span></div>
+
+    <script>
+        const messageInput = document.getElementById('userMessage');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageDiv = document.getElementById('receivedMessage');
+        const statusText = document.getElementById('statusText');
+        const label = document.getElementById('label');
+
+        sendBtn.addEventListener('click', async function() {
+            const text = messageInput.value.trim();
+
+            if (text === "") {
+                statusText.innerText = "Bitte schreiben Sie zuerst!";
+                statusText.style.color = "red";
+                return;
+            }
+
+            label.innerText = "Status:";
+            messageDiv.innerText = "🤖 Jarvis denkt...";
+            statusText.innerText = "Sende...";
+            statusText.style.color = "#666";
+
+            try {
+                // Direkte Verbindung zu Ollama API
+                const response = await fetch('http://localhost:11434/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'qwen3.5:2b',
+                        messages: [{ role: 'user', content: text }],
+                        stream: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ollama-Fehler: ' + response.status);
+                }
+
+                const data = await response.json();
+                const reply = data.message.content;
+
+                label.innerText = "Jarvis:";
+                messageDiv.innerText = reply;
+                statusText.innerText = "Aktiv";
+                statusText.style.color = "#28a745";
+            } catch (e) {
+                label.innerText = "Fehler:";
+                messageDiv.innerText = "Konnte nicht verbinden. Prüfe ob Ollama läuft. " + e.message;
+                statusText.innerText = "Offline";
+                statusText.style.color = "red";
+                console.error('Request fehlgeschlagen:', e);
+            }
+
+            messageInput.value = "";
+        });
+    </script>
+</body>
+</html>

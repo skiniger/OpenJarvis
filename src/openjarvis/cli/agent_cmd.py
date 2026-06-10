@@ -291,6 +291,34 @@ def search(agent_id: str, query: str, limit: int) -> None:
         console.print(f"[red]Error: {exc}[/red]")
 
 
+@agent.command("types")
+def list_types() -> None:
+    """List all registered agent types (domain + built-in)."""
+    console = Console(stderr=True)
+    try:
+        import openjarvis.agents  # noqa: F401 — trigger registration
+        from openjarvis.core.registry import AgentRegistry
+
+        rows = []
+        for name in sorted(AgentRegistry.keys()):
+            cls = AgentRegistry.get(name)
+            rows.append((name, getattr(cls, "agent_id", name), getattr(cls, "__module__", "?").split(".")[-1]))
+
+        if not rows:
+            console.print("[dim]No agents registered.[/dim]")
+            return
+
+        table = Table(title="Registered Agent Types")
+        table.add_column("Name", style="cyan")
+        table.add_column("ID", style="green")
+        table.add_column("Module", style="yellow")
+        for name, agent_id, module in rows:
+            table.add_row(name, agent_id, module)
+        console.print(table)
+    except Exception as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+
+
 @agent.command("templates")
 def templates() -> None:
     """List available agent templates."""

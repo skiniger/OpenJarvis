@@ -1,0 +1,14 @@
+[skill]
+name = "macos_command"
+version = "1.0.0"
+description = "Native macOS control via AppleScript, Finder, Notifications, Clipboard, Volume, Text-to-Speech, and System Monitoring."
+author = "kinggeorge"
+required_capabilities = ["system:execute"]
+tags = ["macos", "system", "automation", "applescript", "native"]
+user_invocable = true
+disable_model_invocation = false
+
+[[skill.steps]]
+tool_name = "macos_command"
+arguments_template = '{"action": "{{ action }}", "args": {{ args | tojson }}, "sudo": {{ sudo | default(false) | tojson }}}'
+output_key = "macos_result"

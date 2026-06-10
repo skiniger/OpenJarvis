@@ -10,6 +10,7 @@ from openjarvis.agents._stubs import (
     BaseAgent,
     ToolUsingAgent,
 )
+from openjarvis.agents.memory import AgentMemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,36 @@ try:
 except ImportError:
     pass
 
+try:
+    import openjarvis.agents.bavaria_booking  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    import openjarvis.agents.legal_assistant  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    import openjarvis.agents.marketing_assistant  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    import openjarvis.agents.operations_assistant  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    import openjarvis.agents.security_assistant  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    import openjarvis.agents.memory  # noqa: F401
+except ImportError:
+    pass
+
 # Hybrid local+cloud paradigm agents (Minions, Conductor, Archon, Advisors,
 # SkillOrchestra, ToolOrchestra). Each module registers under its own name
 # via @AgentRegistry.register(). Optional deps may make some unavailable.
@@ -101,4 +132,10 @@ try:
 except Exception as exc:
     logger.debug("Registry alias 'react' creation skipped: %s", exc)
 
-__all__ = ["AgentContext", "AgentResult", "BaseAgent", "ToolUsingAgent"]
+__all__ = [
+    "AgentContext",
+    "AgentResult",
+    "AgentMemoryManager",
+    "BaseAgent",
+    "ToolUsingAgent",
+]

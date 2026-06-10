@@ -437,3 +437,74 @@ class TestPersonaFilesReachModel:
 
         # Pass condition: doesn't crash with TypeError on prompt_builder kwarg.
         assert result.exit_code == 0, result.output
+
+
+class TestAgentMemoryIntegration:
+    def test_persist_agent_memory_stores_turns(
+        self, runner, monkeypatch, tmp_path
+    ):
+        """When persist_agent_memory is enabled, turns are written to agent memory."""
+        from openjarvis.core.config import JarvisConfig
+
+        cfg = JarvisConfig()
+        cfg.agent.persist_agent_memory = True
+        cfg.agent.context_from_memory = False
+
+        engine = _mock_engine("Memory response")
+        _register_agents()
+        _register_tools()
+
+        with (
+            patch.object(_ask_mod, "load_config", return_value=cfg),
+            patch.object(_ask_mod, "get_engine", return_value=("mock", engine)),
+            patch.object(_ask_mod, "discover_engines", return_value=[("mock", engine)]),
+            patch.object(
+                _ask_mod, "discover_models", return_value={"mock": ["test-model"]}
+            ),
+            patch.object(_ask_mod, "register_builtin_models"),
+            patch.object(_ask_mod, "merge_discovered_models"),
+            patch(
+                "openjarvis.agents.memory.AgentMemoryManager"
+            ) as mock_mgr_cls,
+        ):
+            mock_mgr = MagicMock()
+            mock_mgr.retrieve_turns.return_value = []
+            mock_mgr_cls.return_value = mock_mgr
+
+            result = runner.invoke(cli, ["ask", "--agent", "simple", "Test query"])
+
+        assert result.exit_code == 0, result.output
+        mock_mgr.store_turn.assert_any_call("simple", "user", "Test query")
+        mock_mgr.store_turn.assert_any_call("simple", "assistant", "Memory response")
+
+    def test_persist_agent_memory_disabled_skips_storage(
+        self, runner, monkeypatch, tmp_path
+    ):
+        """When persist_agent_memory is disabled, AgentMemoryManager is never used."""
+        from openjarvis.core.config import JarvisConfig
+
+        cfg = JarvisConfig()
+        cfg.agent.persist_agent_memory = False
+        cfg.agent.context_from_memory = False
+
+        engine = _mock_engine("No memory")
+        _register_agents()
+        _register_tools()
+
+        with (
+            patch.object(_ask_mod, "load_config", return_value=cfg),
+            patch.object(_ask_mod, "get_engine", return_value=("mock", engine)),
+            patch.object(_ask_mod, "discover_engines", return_value=[("mock", engine)]),
+            patch.object(
+                _ask_mod, "discover_models", return_value={"mock": ["test-model"]}
+            ),
+            patch.object(_ask_mod, "register_builtin_models"),
+            patch.object(_ask_mod, "merge_discovered_models"),
+            patch(
+                "openjarvis.agents.memory.AgentMemoryManager"
+            ) as mock_mgr_cls,
+        ):
+            result = runner.invoke(cli, ["ask", "--agent", "simple", "Hello"])
+
+        assert result.exit_code == 0, result.output
+        mock_mgr_cls.assert_not_called()
