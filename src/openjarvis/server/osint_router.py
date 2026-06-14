@@ -341,3 +341,17 @@ async def list_favorites(request: Request) -> dict[str, Any]:
 
     favs = get_store().list_favorites(_user_id(request))
     return {"favorites": favs, "count": len(favs)}
+
+
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
+
+
+@router.get("/dashboard/stats")
+async def dashboard_stats(request: Request) -> dict[str, Any]:
+    """Return aggregated dashboard stats for the current user."""
+    from openjarvis.server.osint_store import get_store
+
+    stats = get_store().get_dashboard_stats(_user_id(request))
+    return stats

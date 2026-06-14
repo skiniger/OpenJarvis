@@ -100,3 +100,56 @@ class TestOsintStore:
         removed = self.store.clear_history("u1")
         assert removed == 3
         assert len(self.store.list_history("u1")) == 0
+
+    def test_dashboard_stats_empty(self):
+        stats = self.store.get_dashboard_stats("u1")
+        assert stats["total_scans"] == 0
+        assert stats["total_execs"] == 0
+        assert stats["total_actions"] == 0
+        assert stats["unique_targets"] == 0
+        assert stats["success_rate"] == 0.0
+        assert len(stats["activity_timeline"]) == 30
+        assert stats["activity_timeline"][0]["scans"] == 0
+
+    def test_dashboard_stats_with_data(self):
+        self.store.save_scan(
+            user_id="u1",
+            target="example.com",
+            modules=["dns", "whois"],
+            results={},
+            summary={"errors": 0, "modules": 2},
+        )
+        self.store.save_scan(
+            user_id="u1",
+            target="example.com",
+            modules=["dns"],
+            results={},
+            summary={"errors": 1, "modules": 1},
+        )
+        self.store.save_exec(
+            user_id="u1",
+            tool_name="nmap",
+            target="example.com",
+            output="ok",
+            success=True,
+            metadata={},
+        )
+
+        stats = self.store.get_dashboard_stats("u1")
+        assert stats["total_scans"] == 2
+        assert stats["total_execs"] == 1
+        assert stats["total_actions"] == 3
+        assert stats["unique_targets"] == 1
+        assert stats["success_rate"] == 66.7
+        assert len(stats["top_targets"]) == 1
+        assert stats["top_targets"][0]["target"] == "example.com"
+        assert stats["top_targets"][0]["count"] == 3
+        assert len(stats["tool_usage"]) == 1
+        assert stats["tool_usage"][0]["tool_name"] == "nmap"
+        assert len(stats["module_usage"]) == 2
+
+    def test_dashboard_stats_user_scoped(self):
+        self.store.save_scan(user_id="alice", target="a.com", modules=[], results={}, summary={})
+        self.store.save_scan(user_id="bob", target="b.com", modules=[], results={}, summary={})
+        assert self.store.get_dashboard_stats("alice")["total_scans"] == 1
+        assert self.store.get_dashboard_stats("bob")["total_scans"] == 1

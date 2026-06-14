@@ -150,6 +150,85 @@ class OsintStore:
     def is_favorite(self, user_id: str, tool_name: str) -> bool:
         return tool_name in self._user_favorites(user_id)
 
+    # ------------------------------------------------------------------
+    # Dashboard stats
+    # ------------------------------------------------------------------
+
+    def get_dashboard_stats(self, user_id: str) -> dict[str, Any]:
+        """Return aggregated stats for the dashboard."""
+        from collections import Counter
+        from datetime import timedelta
+
+        history = self._user_history(user_id)
+        scans = [e for e in history if e.type == "scan"]
+        execs = [e for e in history if e.type == "exec"]
+
+        # Success rate
+        total = len(history)
+        successes = sum(1 for e in history if e.success)
+        success_rate = round((successes / total) * 100, 1) if total else 0.0
+
+        # Top targets
+        target_counts = Counter(
+            e.target for e in history if e.target
+        )
+        top_targets = [
+            {"target": target, "count": count}
+            for target, count in target_counts.most_common(5)
+        ]
+
+        # Tool usage
+        tool_counts = Counter(
+            e.tool_name for e in history if e.tool_name
+        )
+        tool_usage = [
+            {"tool_name": tool, "count": count}
+            for tool, count in tool_counts.most_common(5)
+        ]
+
+        # Module usage (from scan metadata)
+        module_counts: Counter[str] = Counter()
+        for scan in scans:
+            if scan.modules:
+                for mod in scan.modules:
+                    module_counts[mod] += 1
+        module_usage = [
+            {"module": mod, "count": count}
+            for mod, count in module_counts.most_common(5)
+        ]
+
+        # Activity timeline (last 30 days)
+        today = datetime.now(timezone.utc).date()
+        timeline: dict[str, dict[str, int]] = {}
+        for i in range(30):
+            day = (today - timedelta(days=i)).isoformat()
+            timeline[day] = {"scans": 0, "execs": 0}
+
+        for entry in history:
+            entry_date = entry.timestamp[:10]  # YYYY-MM-DD
+            if entry_date in timeline:
+                if entry.type == "scan":
+                    timeline[entry_date]["scans"] += 1
+                else:
+                    timeline[entry_date]["execs"] += 1
+
+        activity_timeline = [
+            {"date": day, "scans": data["scans"], "execs": data["execs"]}
+            for day, data in sorted(timeline.items())
+        ]
+
+        return {
+            "total_scans": len(scans),
+            "total_execs": len(execs),
+            "total_actions": total,
+            "unique_targets": len(target_counts),
+            "success_rate": success_rate,
+            "top_targets": top_targets,
+            "tool_usage": tool_usage,
+            "module_usage": module_usage,
+            "activity_timeline": activity_timeline,
+        }
+
 
 # Global singleton (server lifetime)
 _store: OsintStore | None = None

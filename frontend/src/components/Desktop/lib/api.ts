@@ -353,3 +353,25 @@ export interface FavoritesListResponse {
 export async function fetchFavorites(apiUrl: string): Promise<FavoritesListResponse> {
   return request<FavoritesListResponse>(apiUrl, '/v1/osint/favorites');
 }
+
+export interface DashboardStats {
+  total_scans: number;
+  total_execs: number;
+  total_actions: number;
+  unique_targets: number;
+  success_rate: number;
+  top_targets: Array<{ target: string; count: number }>;
+  tool_usage: Array<{ tool_name: string; count: number }>;
+  module_usage: Array<{ module: string; count: number }>;
+  activity_timeline: Array<{
+    date: string;
+    scans: number;
+    execs: number;
+  }>;
+}
+
+export async function fetchDashboardStats(
+  apiUrl: string,
+): Promise<DashboardStats> {
+  return request<DashboardStats>(apiUrl, '/v1/osint/dashboard/stats');
+}

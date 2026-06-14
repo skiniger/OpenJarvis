@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Shield, Search, Clock } from 'lucide-react';
+import { Shield, Search, Clock, BarChart3 } from 'lucide-react';
 import { ToolSearch } from '../components/Osint/ToolSearch';
 import { WatchdogPanel } from '../components/Osint/WatchdogPanel';
 import { HistoryPanel } from '../components/Osint/HistoryPanel';
+import { DashboardPanel } from '../components/Osint/DashboardPanel';
 
 export function OsintPage() {
-  const [activeTab, setActiveTab] = useState<'arsenal' | 'watchdog' | 'history'>('arsenal');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history'>('dashboard');
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -17,6 +18,18 @@ export function OsintPage() {
           </h1>
         </div>
         <div className="flex gap-1 mt-3">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+            style={{
+              background: activeTab === 'dashboard' ? 'var(--color-accent-subtle)' : 'transparent',
+              color: activeTab === 'dashboard' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: activeTab === 'dashboard' ? '1px solid var(--color-accent-muted)' : '1px solid transparent',
+            }}
+          >
+            <BarChart3 size={14} />
+            Dashboard
+          </button>
           <button
             onClick={() => setActiveTab('arsenal')}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
@@ -57,6 +70,7 @@ export function OsintPage() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
+        {activeTab === 'dashboard' && <DashboardPanel />}
         {activeTab === 'arsenal' && <ToolSearch />}
         {activeTab === 'watchdog' && <WatchdogPanel />}
         {activeTab === 'history' && <HistoryPanel />}
