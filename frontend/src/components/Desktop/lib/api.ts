@@ -300,3 +300,153 @@ export async function exportWatchdogScan(
     body: JSON.stringify({ target, modules, format }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// OSINT History + Favorites
+// ---------------------------------------------------------------------------
+
+export interface HistoryEntry {
+  id: string;
+  type: string;
+  user_id: string;
+  timestamp: string;
+  target: string | null;
+  tool_name: string | null;
+  modules: string[] | null;
+  results: Record<string, unknown> | null;
+  output: string | null;
+  success: boolean;
+  metadata: Record<string, unknown>;
+}
+
+export interface OsintHistoryResponse {
+  entries: HistoryEntry[];
+  count: number;
+}
+
+export async function fetchOsintHistory(apiUrl: string, limit = 50): Promise<OsintHistoryResponse> {
+  return request<OsintHistoryResponse>(apiUrl, `/v1/osint/history?limit=${limit}`);
+}
+
+export async function deleteHistoryEntry(apiUrl: string, entryId: string): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>(apiUrl, `/v1/osint/history/${encodeURIComponent(entryId)}`, { method: 'DELETE' });
+}
+
+export interface FavoriteResponse {
+  tool_name: string;
+  favorited: boolean;
+}
+
+export async function toggleFavorite(apiUrl: string, toolName: string): Promise<FavoriteResponse> {
+  return request<FavoriteResponse>(apiUrl, '/v1/osint/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool_name: toolName }),
+  });
+}
+
+export interface FavoritesListResponse {
+  favorites: string[];
+  count: number;
+}
+
+export async function fetchFavorites(apiUrl: string): Promise<FavoritesListResponse> {
+  return request<FavoritesListResponse>(apiUrl, '/v1/osint/favorites');
+}
+
+export interface DashboardStats {
+  total_scans: number;
+  total_execs: number;
+  total_actions: number;
+  unique_targets: number;
+  success_rate: number;
+  top_targets: Array<{ target: string; count: number }>;
+  tool_usage: Array<{ tool_name: string; count: number }>;
+  module_usage: Array<{ module: string; count: number }>;
+  activity_timeline: Array<{
+    date: string;
+    scans: number;
+    execs: number;
+  }>;
+}
+
+export async function fetchDashboardStats(
+  apiUrl: string,
+): Promise<DashboardStats> {
+  return request<DashboardStats>(apiUrl, '/v1/osint/dashboard/stats');
+}
+
+export interface ScheduleJob {
+  id: string;
+  target: string;
+  modules: string[];
+  interval_minutes: number;
+  last_run: string | null;
+  next_run: string | null;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface ScheduleListResponse {
+  schedules: ScheduleJob[];
+  count: number;
+}
+
+export interface ScheduleCreateRequest {
+  target: string;
+  modules: string[];
+  interval_minutes: number;
+}
+
+export async function createSchedule(
+  apiUrl: string,
+  body: ScheduleCreateRequest,
+): Promise<ScheduleJob> {
+  return request<ScheduleJob>(apiUrl, '/v1/osint/schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchSchedules(apiUrl: string): Promise<ScheduleListResponse> {
+  return request<ScheduleListResponse>(apiUrl, '/v1/osint/schedule');
+}
+
+export async function deleteSchedule(
+  apiUrl: string,
+  scheduleId: string,
+): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>(apiUrl, `/v1/osint/schedule/${scheduleId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function toggleSchedule(
+  apiUrl: string,
+  scheduleId: string,
+): Promise<{ schedule_id: string; enabled: boolean }> {
+  return request(apiUrl, `/v1/osint/schedule/${scheduleId}/toggle`, {
+    method: 'POST',
+  });
+}
+
+export interface AlertsResponse {
+  alerts: Array<
+    HistoryEntry & {
+      metadata: {
+        diff?: {
+          changed?: Record<string, unknown>;
+          added?: Record<string, unknown>;
+          removed?: Record<string, unknown>;
+        };
+      };
+    }
+  >;
+  count: number;
+  unread: number;
+}
+
+export async function fetchAlerts(apiUrl: string, limit = 20): Promise<AlertsResponse> {
+  return request<AlertsResponse>(apiUrl, `/v1/osint/alerts?limit=${limit}`);
+}

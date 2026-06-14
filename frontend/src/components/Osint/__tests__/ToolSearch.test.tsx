@@ -5,11 +5,15 @@ import { ToolSearch } from '../ToolSearch';
 const mockSearchOsintTools = vi.hoisted(() => vi.fn());
 const mockFetchOsintCategories = vi.hoisted(() => vi.fn());
 const mockExecOsintTool = vi.hoisted(() => vi.fn());
+const mockFetchFavorites = vi.hoisted(() => vi.fn());
+const mockToggleFavorite = vi.hoisted(() => vi.fn());
 
 vi.mock('../../Desktop/lib/api', () => ({
   searchOsintTools: mockSearchOsintTools,
   fetchOsintCategories: mockFetchOsintCategories,
   execOsintTool: mockExecOsintTool,
+  fetchFavorites: mockFetchFavorites,
+  toggleFavorite: mockToggleFavorite,
 }));
 
 vi.mock('../ToolRunner', () => ({
@@ -22,6 +26,7 @@ describe('ToolSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchOsintCategories.mockResolvedValue(['Domain & IP OSINT', 'Email OSINT Tools']);
+    mockFetchFavorites.mockResolvedValue({ favorites: [] });
   });
 
   it('renders search input and category buttons', async () => {

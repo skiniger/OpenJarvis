@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, ExternalLink, Tag, Package, Play, Copy, Globe, CheckCircle } from 'lucide-react';
 import { searchOsintTools, fetchOsintCategories, type OsintToolResult } from '../Desktop/lib/api';
 import { ToolRunner } from './ToolRunner';
+import { FavoriteButton } from './FavoriteButton';
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://127.0.0.1:8000';
 
@@ -188,6 +189,7 @@ export function ToolSearch() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <FavoriteButton toolName={tool.name} />
                   {tool.url && (
                     <a
                       href={tool.url}
