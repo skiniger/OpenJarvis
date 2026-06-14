@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Shield, Search, Clock, BarChart3, Timer } from 'lucide-react';
+import { Shield, Search, Clock, BarChart3, Timer, Bell } from 'lucide-react';
 import { ToolSearch } from '../components/Osint/ToolSearch';
 import { WatchdogPanel } from '../components/Osint/WatchdogPanel';
 import { HistoryPanel } from '../components/Osint/HistoryPanel';
 import { DashboardPanel } from '../components/Osint/DashboardPanel';
 import { SchedulePanel } from '../components/Osint/SchedulePanel';
+import { AlertsPanel } from '../components/Osint/AlertsPanel';
 import { fetchAlerts } from '../components/Desktop/lib/api';
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://127.0.0.1:8000';
 
 export function OsintPage() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history' | 'scheduler'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history' | 'scheduler' | 'alerts'>('dashboard');
   const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
@@ -106,6 +107,29 @@ export function OsintPage() {
             <Timer size={14} />
             Scheduler
           </button>
+          <button
+            onClick={() => setActiveTab('alerts')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer relative"
+            style={{
+              background: activeTab === 'alerts' ? 'var(--color-accent-subtle)' : 'transparent',
+              color: activeTab === 'alerts' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: activeTab === 'alerts' ? '1px solid var(--color-accent-muted)' : '1px solid transparent',
+            }}
+          >
+            <Bell size={14} />
+            Alerts
+            {alertCount > 0 && activeTab !== 'alerts' && (
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                style={{
+                  background: 'var(--color-accent)',
+                  color: '#fff',
+                }}
+              >
+                {alertCount > 9 ? '9+' : alertCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -115,6 +139,7 @@ export function OsintPage() {
         {activeTab === 'watchdog' && <WatchdogPanel />}
         {activeTab === 'history' && <HistoryPanel />}
         {activeTab === 'scheduler' && <SchedulePanel />}
+        {activeTab === 'alerts' && <AlertsPanel />}
       </div>
     </div>
   );
