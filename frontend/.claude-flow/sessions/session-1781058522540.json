@@ -1,0 +1,14 @@
+{
+  "id": "session-1781058522540",
+  "startedAt": "2026-06-10T02:28:42.540Z",
+  "cwd": "/Users/kinggeorge/projects/open-jarvis/frontend",
+  "context": {},
+  "metrics": {
+    "edits": 18,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-06-10T12:28:08.713Z",
+  "duration": 35966174
+}
