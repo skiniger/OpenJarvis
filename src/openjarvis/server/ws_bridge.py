@@ -30,6 +30,11 @@ _AGENT_EVENTS = {
     EventType.INFERENCE_END,
 }
 
+# OSINT-related event types to forward
+_OSINT_EVENTS = {
+    EventType.SCHEDULER_TASK_END,
+}
+
 
 def create_ws_router(event_bus: EventBus) -> Any:
     """Create a FastAPI router with a WebSocket endpoint for agent events."""
@@ -56,6 +61,10 @@ def create_ws_router(event_bus: EventBus) -> Any:
 
     # Subscribe to all agent events
     for event_type in _AGENT_EVENTS:
+        event_bus.subscribe(event_type, _on_event)
+
+    # Subscribe to OSINT events
+    for event_type in _OSINT_EVENTS:
         event_bus.subscribe(event_type, _on_event)
 
     @router.websocket("/v1/agents/events")

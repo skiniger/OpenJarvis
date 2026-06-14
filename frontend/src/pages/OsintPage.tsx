@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Shield, Search, Clock, BarChart3, Timer, Bell } from 'lucide-react';
 import { ToolSearch } from '../components/Osint/ToolSearch';
 import { WatchdogPanel } from '../components/Osint/WatchdogPanel';
@@ -7,6 +7,7 @@ import { DashboardPanel } from '../components/Osint/DashboardPanel';
 import { SchedulePanel } from '../components/Osint/SchedulePanel';
 import { AlertsPanel } from '../components/Osint/AlertsPanel';
 import { fetchAlerts } from '../components/Desktop/lib/api';
+import { useOsintEvents } from '../lib/useOsintEvents';
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://127.0.0.1:8000';
 
@@ -14,17 +15,31 @@ export function OsintPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history' | 'scheduler' | 'alerts'>('dashboard');
   const [alertCount, setAlertCount] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const refreshAlerts = useCallback(() => {
     fetchAlerts(API_URL, 20)
       .then((res) => {
-        if (!cancelled) setAlertCount(res.count);
+        setAlertCount(res.count);
       })
       .catch(() => {
-        if (!cancelled) setAlertCount(0);
+        setAlertCount(0);
       });
-    return () => { cancelled = true; };
-  }, [activeTab]);
+  }, []);
+
+  useEffect(() => {
+    refreshAlerts();
+  }, [activeTab, refreshAlerts]);
+
+  useOsintEvents(
+    useCallback(
+      (event) => {
+        if (event.type === 'scheduler_task_end') {
+          refreshAlerts();
+        }
+      },
+      [refreshAlerts],
+    ),
+    ['scheduler_task_end'],
+  );
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
