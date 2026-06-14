@@ -450,3 +450,17 @@ export interface AlertsResponse {
 export async function fetchAlerts(apiUrl: string, limit = 20): Promise<AlertsResponse> {
   return request<AlertsResponse>(apiUrl, `/v1/osint/alerts?limit=${limit}`);
 }
+
+export interface OsintReportResponse {
+  format: string;
+  filename: string;
+  data?: Record<string, unknown>;
+  content?: string;
+}
+
+export async function fetchOsintReport(
+  apiUrl: string,
+  format: 'json' | 'markdown' = 'json',
+): Promise<OsintReportResponse> {
+  return request<OsintReportResponse>(apiUrl, `/v1/osint/report?fmt=${format}`);
+}

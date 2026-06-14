@@ -449,3 +449,74 @@ async def list_alerts(request: Request, limit: int = 20) -> dict[str, Any]:
 
     alerts = get_store().list_alerts(_user_id(request), limit=limit)
     return {"alerts": alerts, "count": len(alerts), "unread": len(alerts)}
+
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+
+
+@router.get("/report")
+async def export_report(request: Request, fmt: str = "json") -> dict[str, Any]:
+    """Export a comprehensive OSINT report for the current user."""
+    from datetime import datetime, timezone
+
+    from openjarvis.server.osint_store import get_store
+
+    user = _user_id(request)
+    store = get_store()
+    history = store.list_history(user, limit=100)
+    stats = store.get_dashboard_stats(user)
+    alerts = store.list_alerts(user, limit=50)
+    schedules = store.list_schedules(user)
+    favorites = store.list_favorites(user)
+
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": user,
+        "summary": stats,
+        "alerts": alerts,
+        "schedules": schedules,
+        "favorites": favorites,
+        "history": history,
+    }
+
+    if fmt == "markdown":
+        md_lines = [
+            "# OSINT Report",
+            f"**Generated:** {report['generated_at']}",
+            f"**User:** {user}",
+            "",
+            "## Summary",
+            f"- Total Scans: {stats['total_scans']}",
+            f"- Total Executions: {stats['total_execs']}",
+            f"- Success Rate: {stats['success_rate']}%",
+            f"- Unique Targets: {stats['unique_targets']}",
+            "",
+            "## Alerts",
+        ]
+        if alerts:
+            for alert in alerts:
+                md_lines.append(f"- **{alert.get('target', 'unknown')}** at {alert.get('timestamp', 'unknown')}")
+        else:
+            md_lines.append("_No alerts._")
+        md_lines.extend(["", "## Schedules"])
+        if schedules:
+            for s in schedules:
+                md_lines.append(f"- **{s['target']}** — every {s['interval_minutes']} min (enabled={s['enabled']})")
+        else:
+            md_lines.append("_No schedules._")
+        md_lines.extend(["", "## History"])
+        for entry in history:
+            md_lines.append(f"- [{entry['type']}] {entry.get('target', entry.get('tool_name', 'unknown'))} — {entry['timestamp']}")
+        return {
+            "format": "markdown",
+            "filename": f"osint_report_{user}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.md",
+            "content": "\n".join(md_lines),
+        }
+
+    return {
+        "format": "json",
+        "filename": f"osint_report_{user}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json",
+        "data": report,
+    }

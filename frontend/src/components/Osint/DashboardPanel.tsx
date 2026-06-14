@@ -21,8 +21,9 @@ import {
   TrendingUp,
   Loader2,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
-import { fetchDashboardStats, fetchAlerts, type DashboardStats, type AlertsResponse } from '../Desktop/lib/api';
+import { fetchDashboardStats, fetchAlerts, fetchOsintReport, type DashboardStats, type AlertsResponse } from '../Desktop/lib/api';
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://127.0.0.1:8000';
 
@@ -103,8 +104,45 @@ export function DashboardPanel() {
 
   const isEmpty = stats.total_actions === 0;
 
+  const handleDownloadReport = async (fmt: 'json' | 'markdown') => {
+    try {
+      const report = await fetchOsintReport(API_URL, fmt);
+      const blob = report.content
+        ? new Blob([report.content], { type: 'text/markdown' })
+        : new Blob([JSON.stringify(report.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = report.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download report:', err);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      {/* Header Actions */}
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => handleDownloadReport('json')}
+          className="flex items-center gap-1.5 text-[10px] px-2 py-1.5 rounded-md cursor-pointer"
+          style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+        >
+          <Download size={12} />
+          JSON
+        </button>
+        <button
+          onClick={() => handleDownloadReport('markdown')}
+          className="flex items-center gap-1.5 text-[10px] px-2 py-1.5 rounded-md cursor-pointer"
+          style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+        >
+          <Download size={12} />
+          Markdown
+        </button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard
