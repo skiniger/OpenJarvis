@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import pathlib
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -250,10 +251,42 @@ def create_app(
     config:
         Optional JarvisConfig for other settings.
     """
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        try:
+            from openjarvis.server.osint_scheduler import start_scheduler
+
+            start_scheduler()
+        except Exception:
+            pass
+
+        yield
+
+        try:
+            from openjarvis.server.osint_scheduler import stop_scheduler
+
+            stop_scheduler()
+        except Exception:
+            pass
+
+        bridge = getattr(app.state, "analytics_bridge", None)
+        if bridge is not None:
+            try:
+                bridge.stop()
+            except Exception:
+                pass
+        client = getattr(app.state, "analytics_client", None)
+        if client is not None:
+            try:
+                client.shutdown()
+            except Exception:
+                pass
+
     app = FastAPI(
         title="OpenJarvis API",
         description="OpenAI-compatible API server for OpenJarvis",
         version="0.1.0",
+        lifespan=_lifespan,
     )
 
     from fastapi.middleware.cors import CORSMiddleware
@@ -347,20 +380,6 @@ def create_app(
                 _bridge.start()
                 app.state.analytics_bridge = _bridge
 
-            @app.on_event("shutdown")
-            async def _shutdown_analytics() -> None:
-                bridge = getattr(app.state, "analytics_bridge", None)
-                if bridge is not None:
-                    try:
-                        bridge.stop()
-                    except Exception:
-                        pass
-                client = getattr(app.state, "analytics_client", None)
-                if client is not None:
-                    try:
-                        client.shutdown()
-                    except Exception:
-                        pass
     except Exception as _exc:
         logger.debug("Analytics init skipped: %s", _exc)
 
@@ -368,20 +387,6 @@ def create_app(
     app.include_router(dashboard_router)
     app.include_router(comparison_router)
     app.include_router(osint_router)
-
-    # Start OSINT scheduler background task
-    try:
-        from openjarvis.server.osint_scheduler import start_scheduler, stop_scheduler
-
-        @app.on_event("startup")
-        async def _startup_osint_scheduler() -> None:
-            start_scheduler()
-
-        @app.on_event("shutdown")
-        async def _shutdown_osint_scheduler() -> None:
-            stop_scheduler()
-    except Exception as _exc:
-        logger.debug("OSINT scheduler init skipped: %s", _exc)
 
     app.include_router(create_connectors_router())
     app.include_router(create_digest_router())
