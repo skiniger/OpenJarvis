@@ -4,10 +4,12 @@ import { DashboardPanel } from '../DashboardPanel';
 
 const mockFetchDashboardStats = vi.hoisted(() => vi.fn());
 const mockFetchAlerts = vi.hoisted(() => vi.fn());
+const mockFetchOsintReport = vi.hoisted(() => vi.fn());
 
 vi.mock('../../Desktop/lib/api', () => ({
   fetchDashboardStats: mockFetchDashboardStats,
   fetchAlerts: mockFetchAlerts,
+  fetchOsintReport: mockFetchOsintReport,
 }));
 
 describe('DashboardPanel', () => {
@@ -111,6 +113,27 @@ describe('DashboardPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Network error/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders download report buttons', async () => {
+    mockFetchDashboardStats.mockResolvedValue({
+      total_scans: 1,
+      total_execs: 1,
+      total_actions: 2,
+      unique_targets: 1,
+      success_rate: 100,
+      top_targets: [],
+      tool_usage: [],
+      module_usage: [],
+      activity_timeline: [],
+    });
+
+    render(<DashboardPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('JSON')).toBeInTheDocument();
+      expect(screen.getByText('Markdown')).toBeInTheDocument();
     });
   });
 });
