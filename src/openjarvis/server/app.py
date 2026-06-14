@@ -368,6 +368,21 @@ def create_app(
     app.include_router(dashboard_router)
     app.include_router(comparison_router)
     app.include_router(osint_router)
+
+    # Start OSINT scheduler background task
+    try:
+        from openjarvis.server.osint_scheduler import start_scheduler, stop_scheduler
+
+        @app.on_event("startup")
+        async def _startup_osint_scheduler() -> None:
+            start_scheduler()
+
+        @app.on_event("shutdown")
+        async def _shutdown_osint_scheduler() -> None:
+            stop_scheduler()
+    except Exception as _exc:
+        logger.debug("OSINT scheduler init skipped: %s", _exc)
+
     app.include_router(create_connectors_router())
     app.include_router(create_digest_router())
     app.include_router(upload_router)

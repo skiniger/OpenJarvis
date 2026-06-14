@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -29,12 +29,29 @@ class HistoryEntry:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class ScheduleJob:
+    """Recurring OSINT scan schedule."""
+
+    id: str
+    user_id: str
+    target: str
+    modules: list[str]
+    interval_minutes: int
+    last_run: str | None = None
+    next_run: str | None = None
+    enabled: bool = True
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 class OsintStore:
     """In-memory store for OSINT scan and execution history."""
 
     def __init__(self) -> None:
         self._history: dict[str, list[HistoryEntry]] = {}
         self._favorites: dict[str, set[str]] = {}
+        self._schedules: dict[str, list[ScheduleJob]] = {}
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -228,6 +245,86 @@ class OsintStore:
             "module_usage": module_usage,
             "activity_timeline": activity_timeline,
         }
+
+    # ------------------------------------------------------------------
+    # Schedules
+    # ------------------------------------------------------------------
+
+    def _user_schedules(self, user_id: str) -> list[ScheduleJob]:
+        return self._schedules.setdefault(user_id, [])
+
+    def create_schedule(
+        self,
+        user_id: str,
+        target: str,
+        modules: list[str],
+        interval_minutes: int,
+    ) -> ScheduleJob:
+        """Create a new recurring scan schedule."""
+        now = datetime.now(timezone.utc)
+        job = ScheduleJob(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            target=target,
+            modules=modules,
+            interval_minutes=interval_minutes,
+            last_run=None,
+            next_run=(now + timedelta(minutes=interval_minutes)).isoformat(),
+            enabled=True,
+            created_at=now.isoformat(),
+        )
+        self._user_schedules(user_id).append(job)
+        return job
+
+    def list_schedules(self, user_id: str) -> list[dict[str, Any]]:
+        """Return all schedules for a user."""
+        return [asdict(s) for s in self._user_schedules(user_id)]
+
+    def delete_schedule(self, user_id: str, schedule_id: str) -> bool:
+        """Delete a schedule. Returns True if found."""
+        schedules = self._user_schedules(user_id)
+        for idx, s in enumerate(schedules):
+            if s.id == schedule_id:
+                schedules.pop(idx)
+                return True
+        return False
+
+    def toggle_schedule(self, user_id: str, schedule_id: str) -> bool:
+        """Toggle enabled status. Returns new status."""
+        for s in self._user_schedules(user_id):
+            if s.id == schedule_id:
+                s.enabled = not s.enabled
+                return s.enabled
+        return False
+
+    def _tick(self) -> list[dict[str, Any]]:
+        """Execute due schedules. Returns list of executed scan results."""
+        now = datetime.now(timezone.utc)
+        executed: list[dict[str, Any]] = []
+        for user_id, schedules in self._schedules.items():
+            for job in schedules:
+                if not job.enabled or job.next_run is None:
+                    continue
+                next_run = datetime.fromisoformat(job.next_run)
+                if now >= next_run:
+                    try:
+                        from openjarvis.tools.fbi_watchdog.core import run_scan
+                        result = run_scan(job.target, job.modules)
+                        self.save_scan(
+                            user_id=user_id,
+                            target=result["target"],
+                            modules=result["modules"],
+                            results=result["results"],
+                            summary=result["summary"],
+                        )
+                        job.last_run = now.isoformat()
+                        executed.append({"schedule_id": job.id, "target": job.target, "success": True})
+                    except Exception:
+                        job.last_run = now.isoformat()
+                        executed.append({"schedule_id": job.id, "target": job.target, "success": False})
+                    finally:
+                        job.next_run = (now + timedelta(minutes=job.interval_minutes)).isoformat()
+        return executed
 
 
 # Global singleton (server lifetime)

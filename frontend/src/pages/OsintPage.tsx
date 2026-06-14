@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Shield, Search, Clock, BarChart3 } from 'lucide-react';
+import { Shield, Search, Clock, BarChart3, Timer } from 'lucide-react';
 import { ToolSearch } from '../components/Osint/ToolSearch';
 import { WatchdogPanel } from '../components/Osint/WatchdogPanel';
 import { HistoryPanel } from '../components/Osint/HistoryPanel';
 import { DashboardPanel } from '../components/Osint/DashboardPanel';
+import { SchedulePanel } from '../components/Osint/SchedulePanel';
 
 export function OsintPage() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'arsenal' | 'watchdog' | 'history' | 'scheduler'>('dashboard');
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -66,6 +67,18 @@ export function OsintPage() {
             <Clock size={14} />
             History
           </button>
+          <button
+            onClick={() => setActiveTab('scheduler')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+            style={{
+              background: activeTab === 'scheduler' ? 'var(--color-accent-subtle)' : 'transparent',
+              color: activeTab === 'scheduler' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: activeTab === 'scheduler' ? '1px solid var(--color-accent-muted)' : '1px solid transparent',
+            }}
+          >
+            <Timer size={14} />
+            Scheduler
+          </button>
         </div>
       </div>
 
@@ -74,6 +87,7 @@ export function OsintPage() {
         {activeTab === 'arsenal' && <ToolSearch />}
         {activeTab === 'watchdog' && <WatchdogPanel />}
         {activeTab === 'history' && <HistoryPanel />}
+        {activeTab === 'scheduler' && <SchedulePanel />}
       </div>
     </div>
   );

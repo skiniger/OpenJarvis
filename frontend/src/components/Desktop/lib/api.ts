@@ -375,3 +375,58 @@ export async function fetchDashboardStats(
 ): Promise<DashboardStats> {
   return request<DashboardStats>(apiUrl, '/v1/osint/dashboard/stats');
 }
+
+export interface ScheduleJob {
+  id: string;
+  target: string;
+  modules: string[];
+  interval_minutes: number;
+  last_run: string | null;
+  next_run: string | null;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface ScheduleListResponse {
+  schedules: ScheduleJob[];
+  count: number;
+}
+
+export interface ScheduleCreateRequest {
+  target: string;
+  modules: string[];
+  interval_minutes: number;
+}
+
+export async function createSchedule(
+  apiUrl: string,
+  body: ScheduleCreateRequest,
+): Promise<ScheduleJob> {
+  return request<ScheduleJob>(apiUrl, '/v1/osint/schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchSchedules(apiUrl: string): Promise<ScheduleListResponse> {
+  return request<ScheduleListResponse>(apiUrl, '/v1/osint/schedule');
+}
+
+export async function deleteSchedule(
+  apiUrl: string,
+  scheduleId: string,
+): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>(apiUrl, `/v1/osint/schedule/${scheduleId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function toggleSchedule(
+  apiUrl: string,
+  scheduleId: string,
+): Promise<{ schedule_id: string; enabled: boolean }> {
+  return request(apiUrl, `/v1/osint/schedule/${scheduleId}/toggle`, {
+    method: 'POST',
+  });
+}
