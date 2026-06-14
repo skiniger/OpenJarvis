@@ -163,6 +163,11 @@ except ImportError:
     pass
 
 try:
+    import openjarvis.tools.landhaus_bavaria  # noqa: F401
+except ImportError:
+    pass
+
+try:
     import openjarvis.tools.fbi_watchdog  # noqa: F401
 except ImportError:
     pass

@@ -15,6 +15,7 @@ from openjarvis.core.events import EventBus
 from openjarvis.core.registry import AgentRegistry
 from openjarvis.engine._stubs import InferenceEngine
 from openjarvis.tools._stubs import BaseTool
+from openjarvis.tools.landhaus_bavaria import LandhausBavariaTool
 
 _BAVARIA_BOOKING_SYSTEM_PROMPT = (
     "You are the BavariaBooking Domain Expert. "
@@ -68,10 +69,18 @@ class BavariaBookingAgent(OrchestratorAgent):
         # If no explicit system_prompt is passed, load the domain prompt from
         # the companion Markdown file so it can be edited without touching code.
         effective_prompt = system_prompt if system_prompt is not None else _load_domain_prompt()
+
+        # Auto-inject LandhausBavariaTool if no explicit tools are provided
+        effective_tools = tools
+        if effective_tools is None:
+            effective_tools = [LandhausBavariaTool()]
+        elif not any(t.spec.name == "landhaus_bavaria" for t in effective_tools if hasattr(t, "spec")):
+            effective_tools = [*effective_tools, LandhausBavariaTool()]
+
         super().__init__(
             engine,
             model,
-            tools=tools,
+            tools=effective_tools,
             bus=bus,
             max_turns=max_turns,
             temperature=temperature,

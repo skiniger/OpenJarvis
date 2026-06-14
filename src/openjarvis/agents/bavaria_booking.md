@@ -97,6 +97,15 @@ The following external systems are approved for read and, where noted, write acc
 | **JARVIS.md** | Repo root | General project rules, swarm routing | Read only |
 | **bavaria_booking.md** | `src/openjarvis/agents/` | Domain instructions, skills, constraints | Read + Write (self-update) |
 
+## Available Tools
+
+When the `BavariaBookingAgent` is instantiated without explicit tools, it automatically receives the `landhaus_bavaria` tool.
+
+| Tool | Actions | When to Use |
+|------|---------|-------------|
+| `landhaus_bavaria` | `health` — Check all configured data sources (website, deskline, iCal, Vercel). Returns status per source. | Periodic health checks, pre-deployment verification, incident response. |
+| `landhaus_bavaria` | `room_availability` — Query Deskline proxy for free rooms in a date range. Requires `date_from` and `date_to` (YYYY-MM-DD). | Guest inquiry automation, booking confirmation, capacity planning. |
+
 ### Data Source Access Rules
 
 1. **Read before Write**: Always query the current state of a data source before mutating it.

@@ -13,9 +13,13 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import httpx
+
+from openjarvis.core.registry import ToolRegistry
+from openjarvis.core.types import ToolResult
+from openjarvis.tools._stubs import BaseTool, ToolSpec
 
 logger = logging.getLogger(__name__)
 
@@ -106,21 +110,80 @@ class LandhausBavariaConnector:
 
 
 # Tool-adapter surface for the orchestrator
-class LandhausBavariaTool:
-    """Stub-compatible tool wrapper for agent integration."""
+@ToolRegistry.register("landhaus_bavaria")
+class LandhausBavariaTool(BaseTool):
+    """Registered tool wrapper for agent integration."""
 
-    name = "landhaus_bavaria"
-    description = "Query Landhaus Bavaria data sources (website, deskline, iCal, Vercel)."
+    tool_id = "landhaus_bavaria"
+    is_local = True
 
-    async def run(self, action: str, **kwargs: Any) -> Dict[str, Any]:
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name="landhaus_bavaria",
+            description=(
+                "Query Landhaus Bavaria data sources. "
+                "Actions: 'health' (check all systems), "
+                "'room_availability' (query Deskline for date range)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["health", "room_availability"],
+                        "description": "Which operation to perform.",
+                    },
+                    "date_from": {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD). Required for room_availability.",
+                    },
+                    "date_to": {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD). Required for room_availability.",
+                    },
+                },
+                "required": ["action"],
+            },
+            category="domain",
+            timeout_seconds=20.0,
+        )
+
+    def execute(self, action: str = "", **kwargs: Any) -> ToolResult:
+        import asyncio
+
         connector = LandhausBavariaConnector()
         try:
             if action == "health":
-                return await connector.health()
-            if action == "room_availability":
-                return await connector.room_availability(
-                    kwargs.get("date_from", ""), kwargs.get("date_to", "")
+                result = asyncio.run(connector.health())
+                return ToolResult(
+                    tool_name="landhaus_bavaria",
+                    content=str(result),
+                    success=True,
                 )
-            return {"error": f"Unknown action: {action}"}
+            if action == "room_availability":
+                result = asyncio.run(
+                    connector.room_availability(
+                        kwargs.get("date_from", ""),
+                        kwargs.get("date_to", ""),
+                    )
+                )
+                success = "error" not in result
+                return ToolResult(
+                    tool_name="landhaus_bavaria",
+                    content=str(result),
+                    success=success,
+                )
+            return ToolResult(
+                tool_name="landhaus_bavaria",
+                content=f"Unknown action: {action}",
+                success=False,
+            )
         finally:
-            await connector.close()
+            asyncio.run(connector.close())
+
+
+__all__ = [
+    "LandhausBavariaConnector",
+    "LandhausBavariaTool",
+]
