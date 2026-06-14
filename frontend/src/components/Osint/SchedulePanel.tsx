@@ -9,12 +9,16 @@ import {
   AlertTriangle,
   Target,
   Settings,
+  Pencil,
+  X,
+  Check,
 } from 'lucide-react';
 import {
   createSchedule,
   fetchSchedules,
   deleteSchedule,
   toggleSchedule,
+  updateSchedule,
   type ScheduleJob,
 } from '../Desktop/lib/api';
 
@@ -38,6 +42,12 @@ export function SchedulePanel() {
   const [selectedModules, setSelectedModules] = useState<string[]>(['dns', 'http', 'whois', 'ip']);
   const [interval, setInterval] = useState(60);
   const [saving, setSaving] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState('');
+  const [editModules, setEditModules] = useState<string[]>([]);
+  const [editInterval, setEditInterval] = useState(60);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +110,43 @@ export function SchedulePanel() {
 
   const toggleModule = (mod: string) => {
     setSelectedModules((prev) =>
+      prev.includes(mod) ? prev.filter((m) => m !== mod) : [...prev, mod],
+    );
+  };
+
+  const handleEditStart = (job: ScheduleJob) => {
+    setEditingId(job.id);
+    setEditTarget(job.target);
+    setEditModules(job.modules);
+    setEditInterval(job.interval_minutes);
+  };
+
+  const handleEditSave = async (id: string) => {
+    setSaving(true);
+    try {
+      await updateSchedule(API_URL, id, {
+        target: editTarget.trim(),
+        modules: editModules,
+        interval_minutes: editInterval,
+      });
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update schedule');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditTarget('');
+    setEditModules([]);
+    setEditInterval(60);
+  };
+
+  const toggleEditModule = (mod: string) => {
+    setEditModules((prev) =>
       prev.includes(mod) ? prev.filter((m) => m !== mod) : [...prev, mod],
     );
   };
@@ -261,76 +308,181 @@ export function SchedulePanel() {
         {schedules.map((job) => (
           <div
             key={job.id}
-            className="rounded-lg p-3 flex items-center justify-between gap-3"
+            className="rounded-lg p-3 flex flex-col gap-3"
             style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}
           >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div
-                className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-                style={{
-                  background: job.enabled
-                    ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-                    : 'color-mix(in srgb, var(--color-text-tertiary) 12%, transparent)',
-                }}
-              >
-                <Target
-                  size={16}
-                  style={{ color: job.enabled ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
-                />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                  {job.target}
-                </span>
-                <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
-                  <span>{job.modules.join(', ')}</span>
-                  <span>·</span>
-                  <span>every {job.interval_minutes}m</span>
-                  {job.last_run && (
-                    <>
+            {editingId === job.id ? (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-medium uppercase" style={{ color: 'var(--color-text-tertiary)' }}>
+                    Target
+                  </label>
+                  <input
+                    type="text"
+                    value={editTarget}
+                    onChange={(e) => setEditTarget(e.target.value)}
+                    placeholder="example.com"
+                    className="px-3 py-2 rounded-md text-sm outline-none"
+                    style={{
+                      background: 'var(--color-bg-primary)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text)',
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-medium uppercase" style={{ color: 'var(--color-text-tertiary)' }}>
+                    Modules
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {DEFAULT_MODULES.map((m) => {
+                      const active = editModules.includes(m.key);
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => toggleEditModule(m.key)}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors cursor-pointer"
+                          style={{
+                            background: active ? 'var(--color-accent-subtle)' : 'var(--color-bg-primary)',
+                            color: active ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+                            border: `1px solid ${active ? 'var(--color-accent-muted)' : 'var(--color-border)'}`,
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-medium uppercase" style={{ color: 'var(--color-text-tertiary)' }}>
+                    Interval (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={10080}
+                    value={editInterval}
+                    onChange={(e) => setEditInterval(Math.max(5, parseInt(e.target.value || '5', 10)))}
+                    className="px-3 py-2 rounded-md text-sm outline-none w-32"
+                    style={{
+                      background: 'var(--color-bg-primary)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text)',
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleEditCancel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                    style={{
+                      background: 'var(--color-bg-primary)',
+                      color: 'var(--color-text-secondary)',
+                      border: '1px solid var(--color-border)',
+                    }}
+                  >
+                    <X size={12} /> Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!editTarget.trim() || saving}
+                    onClick={() => handleEditSave(job.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    style={{
+                      background: 'var(--color-accent)',
+                      color: '#fff',
+                    }}
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                    Save
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+                    style={{
+                      background: job.enabled
+                        ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
+                        : 'color-mix(in srgb, var(--color-text-tertiary) 12%, transparent)',
+                    }}
+                  >
+                    <Target
+                      size={16}
+                      style={{ color: job.enabled ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                      {job.target}
+                    </span>
+                    <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
+                      <span>{job.modules.join(', ')}</span>
                       <span>·</span>
-                      <span>last: {new Date(job.last_run).toLocaleString()}</span>
-                    </>
-                  )}
-                  {job.next_run && (
-                    <>
-                      <span>·</span>
-                      <span>next: {new Date(job.next_run).toLocaleString()}</span>
-                    </>
-                  )}
+                      <span>every {job.interval_minutes}m</span>
+                      {job.last_run && (
+                        <>
+                          <span>·</span>
+                          <span>last: {new Date(job.last_run).toLocaleString()}</span>
+                        </>
+                      )}
+                      {job.next_run && (
+                        <>
+                          <span>·</span>
+                          <span>next: {new Date(job.next_run).toLocaleString()}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-full mr-1"
+                    style={{
+                      background: job.enabled
+                        ? 'color-mix(in srgb, var(--color-success) 12%, transparent)'
+                        : 'color-mix(in srgb, var(--color-text-tertiary) 12%, transparent)',
+                      color: job.enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)',
+                    }}
+                  >
+                    {job.enabled ? 'Active' : 'Paused'}
+                  </span>
+                  <button
+                    onClick={() => handleEditStart(job)}
+                    className="p-1.5 rounded-md transition-colors cursor-pointer"
+                    style={{ color: 'var(--color-text-tertiary)' }}
+                    title="Edit"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleToggle(job.id)}
+                    className="p-1.5 rounded-md transition-colors cursor-pointer"
+                    style={{ color: 'var(--color-text-tertiary)' }}
+                    title={job.enabled ? 'Pause' : 'Resume'}
+                  >
+                    {job.enabled ? <Pause size={14} /> : <Play size={14} />}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(job.id)}
+                    className="p-1.5 rounded-md transition-colors cursor-pointer"
+                    style={{ color: 'var(--color-error)' }}
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <span
-                className="text-[10px] px-1.5 py-0.5 rounded-full mr-1"
-                style={{
-                  background: job.enabled
-                    ? 'color-mix(in srgb, var(--color-success) 12%, transparent)'
-                    : 'color-mix(in srgb, var(--color-text-tertiary) 12%, transparent)',
-                  color: job.enabled ? 'var(--color-success)' : 'var(--color-text-tertiary)',
-                }}
-              >
-                {job.enabled ? 'Active' : 'Paused'}
-              </span>
-              <button
-                onClick={() => handleToggle(job.id)}
-                className="p-1.5 rounded-md transition-colors cursor-pointer"
-                style={{ color: 'var(--color-text-tertiary)' }}
-                title={job.enabled ? 'Pause' : 'Resume'}
-              >
-                {job.enabled ? <Pause size={14} /> : <Play size={14} />}
-              </button>
-              <button
-                onClick={() => handleDelete(job.id)}
-                className="p-1.5 rounded-md transition-colors cursor-pointer"
-                style={{ color: 'var(--color-error)' }}
-                title="Delete"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+            )}
           </div>
         ))}
       </div>

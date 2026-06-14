@@ -435,6 +435,24 @@ export async function toggleSchedule(
   });
 }
 
+export interface ScheduleUpdateRequest {
+  target?: string;
+  modules?: string[];
+  interval_minutes?: number;
+}
+
+export async function updateSchedule(
+  apiUrl: string,
+  scheduleId: string,
+  body: ScheduleUpdateRequest,
+): Promise<ScheduleJob> {
+  return request<ScheduleJob>(apiUrl, `/v1/osint/schedule/${scheduleId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export interface AlertsResponse {
   alerts: Array<
     HistoryEntry & {

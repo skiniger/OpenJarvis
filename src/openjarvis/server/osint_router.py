@@ -380,6 +380,12 @@ class ScheduleCreateRequest(BaseModel):
     interval_minutes: int = Field(60, ge=5, le=10080, description="Interval in minutes (min 5, max 1 week)")
 
 
+class ScheduleUpdateRequest(BaseModel):
+    target: str | None = Field(None, description="New target")
+    modules: list[str] | None = Field(None, description="New modules")
+    interval_minutes: int | None = Field(None, ge=5, le=10080, description="New interval in minutes")
+
+
 class ScheduleResponse(BaseModel):
     id: str
     target: str
@@ -444,6 +450,32 @@ async def toggle_schedule(schedule_id: str, request: Request) -> dict[str, Any]:
 
     status = get_store().toggle_schedule(_user_id(request), schedule_id)
     return {"schedule_id": schedule_id, "enabled": status}
+
+
+@router.patch("/schedule/{schedule_id}")
+async def update_schedule(schedule_id: str, body: ScheduleUpdateRequest, request: Request) -> dict[str, Any]:
+    """Update schedule fields."""
+    from openjarvis.server.osint_store import get_store
+
+    job = get_store().update_schedule(
+        user_id=_user_id(request),
+        schedule_id=schedule_id,
+        target=body.target,
+        modules=body.modules,
+        interval_minutes=body.interval_minutes,
+    )
+    if job is None:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return {
+        "id": job.id,
+        "target": job.target,
+        "modules": job.modules,
+        "interval_minutes": job.interval_minutes,
+        "last_run": job.last_run,
+        "next_run": job.next_run,
+        "enabled": job.enabled,
+        "created_at": job.created_at,
+    }
 
 
 # ---------------------------------------------------------------------------

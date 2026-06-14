@@ -6,12 +6,14 @@ const mockFetchSchedules = vi.hoisted(() => vi.fn());
 const mockCreateSchedule = vi.hoisted(() => vi.fn());
 const mockDeleteSchedule = vi.hoisted(() => vi.fn());
 const mockToggleSchedule = vi.hoisted(() => vi.fn());
+const mockUpdateSchedule = vi.hoisted(() => vi.fn());
 
 vi.mock('../../Desktop/lib/api', () => ({
   fetchSchedules: mockFetchSchedules,
   createSchedule: mockCreateSchedule,
   deleteSchedule: mockDeleteSchedule,
   toggleSchedule: mockToggleSchedule,
+  updateSchedule: mockUpdateSchedule,
 }));
 
 describe('SchedulePanel', () => {
@@ -109,5 +111,119 @@ describe('SchedulePanel', () => {
     await waitFor(() => {
       expect(mockToggleSchedule).toHaveBeenCalledWith(expect.any(String), '1');
     });
+  });
+
+  it('opens edit form on edit button click', async () => {
+    mockFetchSchedules.mockResolvedValue({
+      schedules: [
+        {
+          id: '1',
+          target: 'example.com',
+          modules: ['dns', 'whois'],
+          interval_minutes: 60,
+          last_run: null,
+          next_run: null,
+          enabled: true,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      count: 1,
+    });
+
+    render(<SchedulePanel />);
+    await waitFor(() => {
+      expect(screen.getByText('example.com')).toBeInTheDocument();
+    });
+
+    const editBtn = screen.getByTitle('Edit');
+    fireEvent.click(editBtn);
+
+    expect(screen.getByDisplayValue('example.com')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('60')).toBeInTheDocument();
+    expect(screen.getByText('Save')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
+  });
+
+  it('updates schedule on edit save', async () => {
+    mockFetchSchedules.mockResolvedValue({
+      schedules: [
+        {
+          id: '1',
+          target: 'example.com',
+          modules: ['dns', 'whois'],
+          interval_minutes: 60,
+          last_run: null,
+          next_run: null,
+          enabled: true,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      count: 1,
+    });
+    mockUpdateSchedule.mockResolvedValue({
+      id: '1',
+      target: 'updated.com',
+      modules: ['dns'],
+      interval_minutes: 30,
+      enabled: true,
+      created_at: new Date().toISOString(),
+    });
+
+    render(<SchedulePanel />);
+    await waitFor(() => {
+      expect(screen.getByText('example.com')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle('Edit'));
+
+    const targetInput = screen.getByDisplayValue('example.com');
+    fireEvent.change(targetInput, { target: { value: 'updated.com' } });
+
+    const intervalInput = screen.getByDisplayValue('60');
+    fireEvent.change(intervalInput, { target: { value: '30' } });
+
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockUpdateSchedule).toHaveBeenCalledWith(
+        expect.any(String),
+        '1',
+        expect.objectContaining({
+          target: 'updated.com',
+          interval_minutes: 30,
+        }),
+      );
+    });
+  });
+
+  it('cancels edit without saving', async () => {
+    mockFetchSchedules.mockResolvedValue({
+      schedules: [
+        {
+          id: '1',
+          target: 'example.com',
+          modules: ['dns'],
+          interval_minutes: 60,
+          last_run: null,
+          next_run: null,
+          enabled: true,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      count: 1,
+    });
+
+    render(<SchedulePanel />);
+    await waitFor(() => {
+      expect(screen.getByText('example.com')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle('Edit'));
+    expect(screen.getByDisplayValue('example.com')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+
+    expect(screen.queryByDisplayValue('example.com')).not.toBeInTheDocument();
+    expect(mockUpdateSchedule).not.toHaveBeenCalled();
   });
 });

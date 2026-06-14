@@ -349,6 +349,30 @@ class OsintStore:
                 return s.enabled
         return False
 
+    def update_schedule(
+        self,
+        user_id: str,
+        schedule_id: str,
+        target: str | None = None,
+        modules: list[str] | None = None,
+        interval_minutes: int | None = None,
+    ) -> ScheduleJob | None:
+        """Update schedule fields. Returns updated job or None if not found."""
+        for s in self._user_schedules(user_id):
+            if s.id == schedule_id:
+                if target is not None:
+                    s.target = target
+                if modules is not None:
+                    s.modules = modules
+                if interval_minutes is not None:
+                    s.interval_minutes = interval_minutes
+                    # Recalculate next_run from now
+                    from datetime import timedelta
+                    s.next_run = (datetime.now(timezone.utc) + timedelta(minutes=interval_minutes)).isoformat()
+                self._save()
+                return s
+        return None
+
     def _tick(self) -> list[dict[str, Any]]:
         """Execute due schedules. Returns list of executed scan results."""
         now = datetime.now(timezone.utc)
