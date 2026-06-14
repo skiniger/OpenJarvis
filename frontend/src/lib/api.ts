@@ -247,6 +247,12 @@ export async function fetchTraces(limit: number = 50): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchLandhausHealth(): Promise<unknown> {
+  const res = await fetch(`${getBase()}/v1/landhaus/health`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------
