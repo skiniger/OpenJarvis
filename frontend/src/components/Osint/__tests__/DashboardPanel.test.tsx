@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { DashboardPanel } from '../DashboardPanel';
 
 const mockFetchDashboardStats = vi.hoisted(() => vi.fn());
@@ -134,6 +134,37 @@ describe('DashboardPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('JSON')).toBeInTheDocument();
       expect(screen.getByText('Markdown')).toBeInTheDocument();
+    });
+  });
+
+  it('calls fetchOsintReport when JSON download clicked', async () => {
+    mockFetchDashboardStats.mockResolvedValue({
+      total_scans: 1,
+      total_execs: 1,
+      total_actions: 2,
+      unique_targets: 1,
+      success_rate: 100,
+      top_targets: [],
+      tool_usage: [],
+      module_usage: [],
+      activity_timeline: [],
+    });
+    mockFetchOsintReport.mockResolvedValue({
+      format: 'json',
+      filename: 'report.json',
+      data: { summary: {} },
+    });
+
+    render(<DashboardPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('JSON')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('JSON'));
+
+    await waitFor(() => {
+      expect(mockFetchOsintReport).toHaveBeenCalledWith(expect.any(String), 'json');
     });
   });
 });
