@@ -300,3 +300,56 @@ export async function exportWatchdogScan(
     body: JSON.stringify({ target, modules, format }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// OSINT History + Favorites
+// ---------------------------------------------------------------------------
+
+export interface HistoryEntry {
+  id: string;
+  type: string;
+  user_id: string;
+  timestamp: string;
+  target: string | null;
+  tool_name: string | null;
+  modules: string[] | null;
+  results: Record<string, unknown> | null;
+  output: string | null;
+  success: boolean;
+  metadata: Record<string, unknown>;
+}
+
+export interface OsintHistoryResponse {
+  entries: HistoryEntry[];
+  count: number;
+}
+
+export async function fetchOsintHistory(apiUrl: string, limit = 50): Promise<OsintHistoryResponse> {
+  return request<OsintHistoryResponse>(apiUrl, `/v1/osint/history?limit=${limit}`);
+}
+
+export async function deleteHistoryEntry(apiUrl: string, entryId: string): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>(apiUrl, `/v1/osint/history/${encodeURIComponent(entryId)}`, { method: 'DELETE' });
+}
+
+export interface FavoriteResponse {
+  tool_name: string;
+  favorited: boolean;
+}
+
+export async function toggleFavorite(apiUrl: string, toolName: string): Promise<FavoriteResponse> {
+  return request<FavoriteResponse>(apiUrl, '/v1/osint/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool_name: toolName }),
+  });
+}
+
+export interface FavoritesListResponse {
+  favorites: string[];
+  count: number;
+}
+
+export async function fetchFavorites(apiUrl: string): Promise<FavoritesListResponse> {
+  return request<FavoritesListResponse>(apiUrl, '/v1/osint/favorites');
+}

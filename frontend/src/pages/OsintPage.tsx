@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Shield, Search } from 'lucide-react';
+import { Shield, Search, Clock } from 'lucide-react';
 import { ToolSearch } from '../components/Osint/ToolSearch';
 import { WatchdogPanel } from '../components/Osint/WatchdogPanel';
+import { HistoryPanel } from '../components/Osint/HistoryPanel';
 
 export function OsintPage() {
-  const [activeTab, setActiveTab] = useState<'arsenal' | 'watchdog'>('arsenal');
+  const [activeTab, setActiveTab] = useState<'arsenal' | 'watchdog' | 'history'>('arsenal');
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -40,12 +41,25 @@ export function OsintPage() {
             <Shield size={14} />
             FBI Watchdog
           </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+            style={{
+              background: activeTab === 'history' ? 'var(--color-accent-subtle)' : 'transparent',
+              color: activeTab === 'history' ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+              border: activeTab === 'history' ? '1px solid var(--color-accent-muted)' : '1px solid transparent',
+            }}
+          >
+            <Clock size={14} />
+            History
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
         {activeTab === 'arsenal' && <ToolSearch />}
         {activeTab === 'watchdog' && <WatchdogPanel />}
+        {activeTab === 'history' && <HistoryPanel />}
       </div>
     </div>
   );

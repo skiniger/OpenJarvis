@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/v1/osint", tags=["osint"])
@@ -125,15 +125,30 @@ async def list_categories() -> dict[str, list[str]]:
     return {"categories": cats}
 
 
+def _user_id(request: Request) -> str:
+    """Extract user id from header or fallback to anonymous."""
+    return request.headers.get("x-user-id", "anonymous")
+
+
 @router.post("/watch", response_model=WatchdogScanResponse)
-async def run_watchdog(body: WatchdogScanRequest) -> dict[str, Any]:
+async def run_watchdog(body: WatchdogScanRequest, request: Request) -> dict[str, Any]:
     """Run an FBI Watchdog reconnaissance scan against a target."""
     from openjarvis.tools.fbi_watchdog.core import run_scan
+    from openjarvis.server.osint_store import get_store
 
     try:
         results = run_scan(body.target, body.modules)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Scan failed: {exc}")
+
+    # Persist result
+    get_store().save_scan(
+        user_id=_user_id(request),
+        target=results["target"],
+        modules=results["modules"],
+        results=results["results"],
+        summary=results["summary"],
+    )
 
     return {
         "target": results["target"],
@@ -165,12 +180,23 @@ class ArsenalExecResponse(BaseModel):
 
 
 @router.post("/exec", response_model=ArsenalExecResponse)
-async def exec_tool(body: ArsenalExecRequest) -> dict[str, Any]:
+async def exec_tool(body: ArsenalExecRequest, request: Request) -> dict[str, Any]:
     """Execute an OSINT tool by name against a target."""
     from openjarvis.tools.osint_arsenal.exec_tool import OsintExecTool
+    from openjarvis.server.osint_store import get_store
 
     tool = OsintExecTool()
     result = tool.execute(tool_name=body.tool_name, target=body.target, timeout=body.timeout)
+
+    # Persist result
+    get_store().save_exec(
+        user_id=_user_id(request),
+        tool_name=body.tool_name,
+        target=body.target,
+        output=result.content,
+        success=result.success,
+        metadata=result.metadata or {},
+    )
 
     return {
         "tool": body.tool_name,
@@ -265,3 +291,53 @@ async def export_watchdog(body: WatchdogExportRequest) -> dict[str, Any]:
         "filename": f"watchdog_{body.target}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv",
         "data": output.getvalue(),
     }
+
+
+# ---------------------------------------------------------------------------
+# History + Favorites
+# ---------------------------------------------------------------------------
+
+
+class FavoriteRequest(BaseModel):
+    tool_name: str = Field(..., description="Name of the tool to favorite/unfavorite")
+
+
+class FavoriteResponse(BaseModel):
+    tool_name: str
+    favorited: bool
+
+
+@router.get("/history")
+async def list_history(request: Request, limit: int = 50) -> dict[str, Any]:
+    """List OSINT scan and execution history for the current user."""
+    from openjarvis.server.osint_store import get_store
+
+    entries = get_store().list_history(_user_id(request), limit=limit)
+    return {"entries": entries, "count": len(entries)}
+
+
+@router.delete("/history/{entry_id}")
+async def delete_history(entry_id: str, request: Request) -> dict[str, Any]:
+    """Delete a single history entry."""
+    from openjarvis.server.osint_store import get_store
+
+    removed = get_store().delete_history_entry(_user_id(request), entry_id)
+    return {"removed": removed}
+
+
+@router.post("/favorites", response_model=FavoriteResponse)
+async def toggle_favorite(body: FavoriteRequest, request: Request) -> dict[str, Any]:
+    """Toggle favorite status for a tool."""
+    from openjarvis.server.osint_store import get_store
+
+    status = get_store().toggle_favorite(_user_id(request), body.tool_name)
+    return {"tool_name": body.tool_name, "favorited": status}
+
+
+@router.get("/favorites")
+async def list_favorites(request: Request) -> dict[str, Any]:
+    """List all favorited tool names for the current user."""
+    from openjarvis.server.osint_store import get_store
+
+    favs = get_store().list_favorites(_user_id(request))
+    return {"favorites": favs, "count": len(favs)}
