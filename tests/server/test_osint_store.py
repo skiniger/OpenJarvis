@@ -153,3 +153,39 @@ class TestOsintStore:
         self.store.save_scan(user_id="bob", target="b.com", modules=[], results={}, summary={})
         assert self.store.get_dashboard_stats("alice")["total_scans"] == 1
         assert self.store.get_dashboard_stats("bob")["total_scans"] == 1
+
+
+class TestOsintStorePersistence:
+    def test_save_and_reload(self, tmp_path):
+        path = str(tmp_path / "osint.json")
+        store = OsintStore(persist_path=path)
+        store.save_scan("u1", "x.com", ["dns"], {"ip": "1.2.3.4"}, {"errors": 0})
+        store.toggle_favorite("u1", "nmap")
+        job = store.create_schedule("u1", "y.com", ["http"], 60)
+
+        # Reload from disk
+        store2 = OsintStore(persist_path=path)
+        history = store2.list_history("u1")
+        assert len(history) == 1
+        assert history[0]["target"] == "x.com"
+        assert store2.list_favorites("u1") == ["nmap"]
+        schedules = store2.list_schedules("u1")
+        assert len(schedules) == 1
+        assert schedules[0]["target"] == "y.com"
+        assert schedules[0]["id"] == job.id
+
+    def test_delete_persists(self, tmp_path):
+        path = str(tmp_path / "osint.json")
+        store = OsintStore(persist_path=path)
+        store.save_scan("u1", "x.com", ["dns"], {"ip": "1.2.3.4"}, {"errors": 0})
+        entry_id = store.list_history("u1")[0]["id"]
+        store.delete_history_entry("u1", entry_id)
+
+        store2 = OsintStore(persist_path=path)
+        assert len(store2.list_history("u1")) == 0
+
+    def test_corrupt_file_ignored(self, tmp_path):
+        path = tmp_path / "osint.json"
+        path.write_text("not json")
+        store = OsintStore(persist_path=str(path))
+        assert len(store.list_history("u1")) == 0

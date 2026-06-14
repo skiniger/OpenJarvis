@@ -1,11 +1,13 @@
 """OSINT Result Store — persists scan and execution results.
 
-Uses in-memory storage by default. If a Redis/KV client is available
-via the app state, results are also persisted there.
+Uses in-memory storage by default. If a *persist_path* is provided,
+state is saved to a JSON file on every mutation and loaded on init.
 """
 
 from __future__ import annotations
 
+import json
+import pathlib
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -48,10 +50,51 @@ class ScheduleJob:
 class OsintStore:
     """In-memory store for OSINT scan and execution history."""
 
-    def __init__(self) -> None:
+    def __init__(self, persist_path: str | None = None) -> None:
         self._history: dict[str, list[HistoryEntry]] = {}
         self._favorites: dict[str, set[str]] = {}
         self._schedules: dict[str, list[ScheduleJob]] = {}
+        self._persist_path = persist_path
+        if persist_path:
+            self._load()
+
+    def _load(self) -> None:
+        """Load state from JSON file if it exists."""
+        path = pathlib.Path(self._persist_path)
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for user_id, entries in data.get("history", {}).items():
+                self._history[user_id] = [HistoryEntry(**e) for e in entries]
+            for user_id, favs in data.get("favorites", {}).items():
+                self._favorites[user_id] = set(favs)
+            for user_id, jobs in data.get("schedules", {}).items():
+                self._schedules[user_id] = [ScheduleJob(**j) for j in jobs]
+        except Exception:
+            pass  # corrupted or empty file — start fresh
+
+    def _save(self) -> None:
+        """Persist current state to JSON file."""
+        if not self._persist_path:
+            return
+        path = pathlib.Path(self._persist_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "history": {
+                user_id: [asdict(e) for e in entries]
+                for user_id, entries in self._history.items()
+            },
+            "favorites": {
+                user_id: sorted(list(favs))
+                for user_id, favs in self._favorites.items()
+            },
+            "schedules": {
+                user_id: [asdict(j) for j in jobs]
+                for user_id, jobs in self._schedules.items()
+            },
+        }
+        path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -91,6 +134,7 @@ class OsintStore:
             metadata={"summary": summary},
         )
         self._user_history(user_id).append(entry)
+        self._save()
         return entry.id
 
     # ------------------------------------------------------------------
@@ -119,6 +163,7 @@ class OsintStore:
             metadata=metadata,
         )
         self._user_history(user_id).append(entry)
+        self._save()
         return entry.id
 
     # ------------------------------------------------------------------
@@ -137,6 +182,7 @@ class OsintStore:
         for idx, entry in enumerate(history):
             if entry.id == entry_id:
                 history.pop(idx)
+                self._save()
                 return True
         return False
 
@@ -145,6 +191,7 @@ class OsintStore:
         history = self._user_history(user_id)
         count = len(history)
         history.clear()
+        self._save()
         return count
 
     # ------------------------------------------------------------------
@@ -156,8 +203,10 @@ class OsintStore:
         favs = self._user_favorites(user_id)
         if tool_name in favs:
             favs.discard(tool_name)
+            self._save()
             return False
         favs.add(tool_name)
+        self._save()
         return True
 
     def list_favorites(self, user_id: str) -> list[str]:
@@ -274,6 +323,7 @@ class OsintStore:
             created_at=now.isoformat(),
         )
         self._user_schedules(user_id).append(job)
+        self._save()
         return job
 
     def list_schedules(self, user_id: str) -> list[dict[str, Any]]:
@@ -286,6 +336,7 @@ class OsintStore:
         for idx, s in enumerate(schedules):
             if s.id == schedule_id:
                 schedules.pop(idx)
+                self._save()
                 return True
         return False
 
@@ -294,6 +345,7 @@ class OsintStore:
         for s in self._user_schedules(user_id):
             if s.id == schedule_id:
                 s.enabled = not s.enabled
+                self._save()
                 return s.enabled
         return False
 
@@ -331,6 +383,8 @@ class OsintStore:
                         executed.append({"schedule_id": job.id, "target": job.target, "success": False})
                     finally:
                         job.next_run = (now + timedelta(minutes=job.interval_minutes)).isoformat()
+        if executed:
+            self._save()
         return executed
 
     # ------------------------------------------------------------------
@@ -411,8 +465,12 @@ _store: OsintStore | None = None
 
 
 def get_store() -> OsintStore:
-    """Get or create the global OsintStore singleton."""
+    """Get or create the global OsintStore singleton.
+
+    Uses ~/.openjarvis/osint_store.json for persistence by default.
+    """
     global _store
     if _store is None:
-        _store = OsintStore()
+        default_path = str(pathlib.Path.home() / ".openjarvis" / "osint_store.json")
+        _store = OsintStore(persist_path=default_path)
     return _store
