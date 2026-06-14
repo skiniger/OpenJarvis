@@ -60,3 +60,18 @@ class TestWSBridge:
             time.sleep(0.05)  # Let call_soon_threadsafe deliver to queue
             data = ws.receive_json()
             assert data["data"]["agent_id"] == "agent-A"
+
+    def test_websocket_receives_osint_events(self, app, event_bus):
+        client = TestClient(app)
+        with client.websocket_connect("/v1/agents/events") as ws:
+            event_bus.publish(
+                EventType.SCHEDULER_TASK_END,
+                {
+                    "target": "example.com",
+                    "modules": ["dns"],
+                },
+            )
+            time.sleep(0.05)
+            data = ws.receive_json()
+            assert data["type"] == "scheduler_task_end"
+            assert data["data"]["target"] == "example.com"
