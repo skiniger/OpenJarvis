@@ -14,6 +14,7 @@ import {
 import {
   fetchOsintHistory,
   deleteHistoryEntry,
+  clearHistory,
   fetchFavorites,
   fetchOsintToolDetail,
   type HistoryEntry,
@@ -84,6 +85,16 @@ export function HistoryPanel() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!window.confirm('Clear all history? This cannot be undone.')) return;
+    try {
+      await clearHistory(API_URL);
+      setHistory([]);
+    } catch {
+      // ignore
+    }
+  };
+
   const recentTargets = history
     .filter((e) => e.target)
     .map((e) => e.target!)
@@ -143,6 +154,18 @@ export function HistoryPanel() {
 
       {!loading && activeTab === 'history' && (
         <div className="flex flex-col gap-2">
+          {history.length > 0 && (
+            <div className="flex justify-end">
+              <button
+                onClick={handleClearAll}
+                className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md cursor-pointer"
+                style={{ color: 'var(--color-error)', border: '1px solid var(--color-error-muted)' }}
+              >
+                <Trash2 size={10} />
+                Clear All
+              </button>
+            </div>
+          )}
           {history.length === 0 && (
             <div className="text-sm py-8 text-center" style={{ color: 'var(--color-text-tertiary)' }}>
               No history yet. Run a scan or execute a tool.

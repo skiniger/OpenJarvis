@@ -160,3 +160,37 @@ class TestOsintRouter:
         assert data["format"] == "csv"
         assert "module,key,value" in data["data"]
         assert data["filename"].endswith(".csv")
+
+    def test_clear_history(self, client):
+        """DELETE /history clears all entries and returns count."""
+        import openjarvis.server.osint_store as store_mod
+
+        store = store_mod.OsintStore()
+        store.save_scan("anonymous", "example.com", ["dns"], {"reachable": True}, {"errors": 0})
+        store.save_exec("anonymous", "nmap", "127.0.0.1", "open ports", True, {"version": "7.94"})
+        assert len(store.list_history("anonymous")) == 2
+
+        store_mod._store = store
+        try:
+            resp = client.delete("/v1/osint/history")
+        finally:
+            store_mod._store = None
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["cleared"] == 2
+
+    def test_clear_history_empty(self, client):
+        """DELETE /history on empty store returns 0."""
+        import openjarvis.server.osint_store as store_mod
+
+        store = store_mod.OsintStore()
+        store_mod._store = store
+        try:
+            resp = client.delete("/v1/osint/history")
+        finally:
+            store_mod._store = None
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["cleared"] == 0

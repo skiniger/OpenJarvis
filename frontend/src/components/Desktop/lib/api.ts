@@ -332,6 +332,10 @@ export async function deleteHistoryEntry(apiUrl: string, entryId: string): Promi
   return request<{ removed: boolean }>(apiUrl, `/v1/osint/history/${encodeURIComponent(entryId)}`, { method: 'DELETE' });
 }
 
+export async function clearHistory(apiUrl: string): Promise<{ cleared: number }> {
+  return request<{ cleared: number }>(apiUrl, '/v1/osint/history', { method: 'DELETE' });
+}
+
 export interface FavoriteResponse {
   tool_name: string;
   favorited: boolean;

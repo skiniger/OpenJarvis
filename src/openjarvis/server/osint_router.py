@@ -325,6 +325,15 @@ async def delete_history(entry_id: str, request: Request) -> dict[str, Any]:
     return {"removed": removed}
 
 
+@router.delete("/history")
+async def clear_history(request: Request) -> dict[str, Any]:
+    """Clear all history entries for the current user."""
+    from openjarvis.server.osint_store import get_store
+
+    count = get_store().clear_history(_user_id(request))
+    return {"cleared": count}
+
+
 @router.post("/favorites", response_model=FavoriteResponse)
 async def toggle_favorite(body: FavoriteRequest, request: Request) -> dict[str, Any]:
     """Toggle favorite status for a tool."""
