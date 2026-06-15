@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json as json_mod
 import logging
 import sys
@@ -447,7 +448,12 @@ def _run_agent(
         except Exception as exc:
             logger.warning("Failed to inject memory context for agent: %s", exc)
 
-    result = agent.run(query_text, context=ctx)
+    raw_result = agent.run(query_text, context=ctx)
+    # Agents may be async (OrchestratorAgent) or sync (SimpleAgent).
+    if asyncio.iscoroutine(raw_result):
+        result = asyncio.run(raw_result)
+    else:
+        result = raw_result
 
     # Persist this interaction for future sessions
     if memory_manager is not None:

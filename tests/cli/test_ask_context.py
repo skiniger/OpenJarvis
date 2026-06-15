@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -48,7 +49,18 @@ def test_get_memory_backend_returns_backend_even_when_empty(
     )
 
     mod = importlib.import_module("openjarvis.cli.ask")
-    result = mod._get_memory_backend(config)
+
+    # openjarvis_rust is an optional compiled extension; mock the Rust bridge
+    # so the test exercises _get_memory_backend wiring without needing the
+    # native binary.
+    mock_rust_mem = MagicMock()
+    mock_rust_mem.retrieve.return_value = "[]"
+    mock_rust_mod = MagicMock()
+    mock_rust_mod.SQLiteMemory.return_value = mock_rust_mem
+
+    with patch("openjarvis._rust_bridge.get_rust_module", return_value=mock_rust_mod):
+        result = mod._get_memory_backend(config)
+
     assert result is not None
     # An empty backend should still retrieve cleanly (zero hits).
     assert result.retrieve("anything", top_k=3) == []
@@ -72,13 +84,21 @@ def test_get_memory_backend_returns_backend_with_docs(
     config = JarvisConfig()
     config.memory = MemoryConfig(db_path=db_path)
 
-    # Pre-populate with a document
-    backend = SQLiteMemory(db_path=db_path)
-    backend.store("test document content")
-    backend.close()
-
     mod = importlib.import_module("openjarvis.cli.ask")
-    result = mod._get_memory_backend(config)
+
+    mock_rust_mem = MagicMock()
+    mock_rust_mem.store.return_value = "doc-1"
+    mock_rust_mod = MagicMock()
+    mock_rust_mod.SQLiteMemory.return_value = mock_rust_mem
+
+    with patch("openjarvis._rust_bridge.get_rust_module", return_value=mock_rust_mod):
+        # Pre-populate with a document
+        backend = SQLiteMemory(db_path=db_path)
+        backend.store("test document content")
+        backend.close()
+
+        result = mod._get_memory_backend(config)
+
     assert result is not None
     if hasattr(result, "close"):
         result.close()
