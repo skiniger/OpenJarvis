@@ -549,7 +549,9 @@ export function InputArea() {
       <div
         className="flex items-center gap-2 rounded-2xl px-4 py-3 transition-shadow"
         style={{
-          background: 'var(--color-input-bg)',
+          background: 'var(--color-surface)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           border: '1px solid var(--color-input-border)',
           boxShadow: 'var(--shadow-sm)',
         }}

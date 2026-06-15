@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   fetchEnergy: vi.fn(),
   fetchTelemetry: vi.fn(),
   fetchTraces: vi.fn(),
+  fetchOsintStats: vi.fn(),
+  fetchConnectors: vi.fn(),
 }));
 
 vi.mock('../../../lib/api', () => ({
@@ -22,6 +24,8 @@ vi.mock('../../../lib/api', () => ({
   fetchEnergy: mocks.fetchEnergy,
   fetchTelemetry: mocks.fetchTelemetry,
   fetchTraces: mocks.fetchTraces,
+  fetchOsintStats: mocks.fetchOsintStats,
+  fetchConnectors: mocks.fetchConnectors,
 }));
 
 vi.mock('../../Desktop/lib/api', () => ({
@@ -90,11 +94,17 @@ describe('OsintWatchdogWidget', () => {
       count: 1,
       unread: 0,
     });
+    mocks.fetchOsintStats.mockResolvedValue({
+      total_scans_today: 12,
+      total_alerts_today: 1,
+      watchdog_status: 'active',
+      favorites_count: 3,
+    });
   });
 
   it('renders alert count and tool name', async () => {
     render(<OsintWatchdogWidget />, { wrapper: Wrapper });
-    await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(1));
     expect(screen.getByText('web_search')).toBeInTheDocument();
   });
 });

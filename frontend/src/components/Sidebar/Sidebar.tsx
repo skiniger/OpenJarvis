@@ -83,15 +83,13 @@ export function Sidebar() {
 
       <aside
         className={`
-          flex flex-col h-full shrink-0 transition-all duration-200 ease-in-out overflow-hidden
+          glass-strong flex flex-col h-full shrink-0 transition-all duration-200 ease-in-out overflow-hidden
           fixed md:relative z-30
           ${sidebarOpen ? 'w-[260px]' : 'w-0'}
         `}
         style={{
-          background: 'var(--color-sidebar)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
           borderRight: sidebarOpen ? '1px solid var(--color-border)' : 'none',
+          borderRadius: 0,
         }}
       >
         <div className="flex flex-col h-full w-[260px]">

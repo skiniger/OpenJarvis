@@ -253,6 +253,18 @@ export async function fetchLandhausHealth(): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchConnectors(): Promise<{ sources?: Array<{ id: string; name: string; type: string; status: string }>; total?: number }> {
+  const res = await fetch(`${getBase()}/v1/connectors`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchOsintStats(): Promise<{ total_scans_today?: number; total_alerts_today?: number; watchdog_status?: string; favorites_count?: number }> {
+  const res = await fetch(`${getBase()}/v1/osint/dashboard/stats`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Speech
 // ---------------------------------------------------------------------------

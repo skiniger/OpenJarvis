@@ -3,6 +3,8 @@ import { OsintWatchdogWidget } from '../components/Dashboard/OsintWatchdogWidget
 import { LandhausBavariaWidget } from '../components/Dashboard/LandhausBavariaWidget';
 import { EnergyOverviewWidget } from '../components/Dashboard/EnergyOverviewWidget';
 import { CompactTraceWidget } from '../components/Dashboard/CompactTraceWidget';
+import { GlobalStatusStrip } from '../components/Dashboard/GlobalStatusStrip';
+import { DataSourcesMiniWidget } from '../components/Dashboard/DataSourcesMiniWidget';
 
 export function DashboardPage() {
   const now = new Date();
@@ -25,9 +27,12 @@ export function DashboardPage() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-4">
+        <GlobalStatusStrip />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <AgentFleetWidget />
           <OsintWatchdogWidget />
+          <DataSourcesMiniWidget />
           <LandhausBavariaWidget />
           <EnergyOverviewWidget />
         </div>

@@ -114,6 +114,9 @@ export function MessageBubble({ message, isLive = false }: Props) {
             borderRadius: 'var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
+            backdropFilter: 'blur(8px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(8px) saturate(140%)',
+            border: '1px solid rgba(79, 209, 255, 0.15)',
           }}
         >
           {message.content}

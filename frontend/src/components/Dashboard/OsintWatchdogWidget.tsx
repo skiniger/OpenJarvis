@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Shield, Bell, Clock } from 'lucide-react';
+import { Shield, Bell, Clock, BarChart3 } from 'lucide-react';
 import { fetchAlerts } from '../Desktop/lib/api';
+import { fetchOsintStats } from '../../lib/api';
 import type { AlertsResponse } from '../Desktop/lib/api';
 
 type AlertItem = AlertsResponse['alerts'][number];
@@ -21,17 +22,34 @@ const SEVERITY_COLOR: Record<string, string> = {
   info: 'var(--color-success)',
 };
 
+interface OsintStats {
+  total_scans_today?: number;
+  total_alerts_today?: number;
+  watchdog_status?: string;
+  favorites_count?: number;
+}
+
 export function OsintWatchdogWidget() {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [count, setCount] = useState(0);
+  const [stats, setStats] = useState<OsintStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetchAlerts(API_URL, 5);
-      setAlerts(res.alerts.slice(0, 5));
-      setCount(res.count);
+      const [alertsRes, statsRes] = await Promise.allSettled([
+        fetchAlerts(API_URL, 5).catch(() => ({ alerts: [], count: 0 })),
+        fetchOsintStats().catch(() => ({} as OsintStats)),
+      ]);
+
+      if (alertsRes.status === 'fulfilled') {
+        setAlerts(alertsRes.value.alerts.slice(0, 5));
+        setCount(alertsRes.value.count);
+      }
+      if (statsRes.status === 'fulfilled') {
+        setStats(statsRes.value);
+      }
       setError(null);
     } catch {
       setError('Failed to load alerts');
@@ -79,6 +97,19 @@ export function OsintWatchdogWidget() {
         </div>
       </div>
 
+      {stats && (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <MiniStat icon={BarChart3} label="Scans" value={String(stats.total_scans_today ?? 0)} />
+          <MiniStat icon={Bell} label="Alerts" value={String(stats.total_alerts_today ?? 0)} />
+          <MiniStat
+            icon={Shield}
+            label="Watchdog"
+            value={stats.watchdog_status || 'unknown'}
+            color={stats.watchdog_status === 'active' ? 'var(--color-success)' : 'var(--color-text-tertiary)'}
+          />
+        </div>
+      )}
+
       {error ? (
         <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
       ) : alerts.length === 0 ? (
@@ -116,6 +147,29 @@ export function OsintWatchdogWidget() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function MiniStat({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: typeof Shield;
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center gap-1 p-1.5 rounded"
+      style={{ background: 'var(--color-bg-secondary)' }}
+    >
+      <Icon size={12} style={{ color: color || 'var(--color-accent-purple)' }} />
+      <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-tertiary)' }}>{label}</span>
+      <span className="text-xs font-semibold" style={{ color: color || 'var(--color-text)' }}>{value}</span>
     </div>
   );
 }

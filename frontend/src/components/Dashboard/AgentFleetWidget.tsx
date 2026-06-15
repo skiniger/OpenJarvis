@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Bot, AlertTriangle, Pause, Play, Activity, DollarSign } from 'lucide-react';
-import { fetchManagedAgents } from '../../lib/api';
+import { Bot, AlertTriangle, Activity, DollarSign, Play, Pause } from 'lucide-react';
+import { fetchManagedAgents, pauseManagedAgent, resumeManagedAgent, runManagedAgent } from '../../lib/api';
 import type { ManagedAgent } from '../../lib/api';
 
 const STATUS_ORDER = ['error', 'needs_attention', 'stalled', 'running', 'paused', 'idle', 'archived', 'budget_exceeded'];
@@ -32,6 +32,7 @@ export function AgentFleetWidget() {
   const navigate = useNavigate();
   const [agents, setAgents] = useState<ManagedAgent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -48,6 +49,20 @@ export function AgentFleetWidget() {
     const interval = setInterval(refresh, 10000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  const handleAction = async (agentId: string, action: 'run' | 'pause' | 'resume') => {
+    setActingId(agentId);
+    try {
+      if (action === 'run') await runManagedAgent(agentId);
+      else if (action === 'pause') await pauseManagedAgent(agentId);
+      else if (action === 'resume') await resumeManagedAgent(agentId);
+      await refresh();
+    } catch {
+      /* ignore — toast or error could be added later */
+    } finally {
+      setActingId(null);
+    }
+  };
 
   const counts = (() => {
     const map: Record<string, number> = {};
@@ -76,6 +91,8 @@ export function AgentFleetWidget() {
       : overallStatus === 'warning'
         ? 'var(--color-warning)'
         : 'var(--color-border)';
+
+  const topAgents = agents.slice(0, 3);
 
   return (
     <div
@@ -128,6 +145,49 @@ export function AgentFleetWidget() {
             >
               <AlertTriangle size={11} />
               {budgetWarnings.length} agent{budgetWarnings.length > 1 ? 's' : ''} near budget limit
+            </div>
+          )}
+
+          {topAgents.length > 0 && (
+            <div className="mt-3 pt-2 flex flex-col gap-1.5" style={{ borderTop: '1px solid var(--color-border)' }}>
+              {topAgents.map((a) => {
+                const canRun = a.status === 'idle' || a.status === 'paused';
+                const canPause = a.status === 'running';
+                return (
+                  <div key={a.id} className="flex items-center justify-between text-[11px]">
+                    <span className="truncate" style={{ color: 'var(--color-text-secondary)' }}>
+                      {a.name}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(canRun || canPause) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(a.id, canPause ? 'pause' : 'run');
+                          }}
+                          disabled={actingId === a.id}
+                          className="p-1 rounded cursor-pointer transition-colors"
+                          style={{
+                            color: 'var(--color-text-tertiary)',
+                            background: 'var(--color-bg-secondary)',
+                            border: '1px solid var(--color-border-subtle)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--color-accent)';
+                            e.currentTarget.style.borderColor = 'var(--color-accent)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--color-text-tertiary)';
+                            e.currentTarget.style.borderColor = 'var(--color-border-subtle)';
+                          }}
+                        >
+                          {canPause ? <Pause size={10} /> : <Play size={10} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
