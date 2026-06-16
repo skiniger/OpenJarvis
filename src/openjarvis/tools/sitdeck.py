@@ -14,6 +14,9 @@ No credentials are required; all endpoints are public and unauthenticated.
 
 from __future__ import annotations
 
+import asyncio
+import atexit
+import json
 import logging
 from typing import Any, Dict
 
@@ -27,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 _SITDECK_BASE_URL = "https://sitdeck.com"
 _SITDECK_TIMEOUT_SECONDS = 15.0
+_SITDECK_USER_AGENT = "OpenJarvis-SitDeckTool/1.0"
 
 _SITDECK_ENDPOINTS = {
     "widgets": "/api/sitdeck/widgets",
@@ -43,14 +47,30 @@ _shared_client: httpx.AsyncClient | None = None
 
 
 def _shared_sitdeck_client() -> httpx.AsyncClient:
+    """Return the shared httpx client for SitDeck calls, creating it lazily."""
     global _shared_client
     if _shared_client is None or _shared_client.is_closed:
         _shared_client = httpx.AsyncClient(
             timeout=_SITDECK_TIMEOUT_SECONDS,
-            follow_redirects=True,
-            headers={"User-Agent": "OpenJarvis-SitDeckTool/1.0"},
+            follow_redirects=False,
+            headers={"User-Agent": _SITDECK_USER_AGENT},
         )
     return _shared_client
+
+
+def _shutdown_shared_client() -> None:
+    global _shared_client
+    client = _shared_client
+    if client is not None and not client.is_closed:
+        try:
+            asyncio.run(client.aclose())
+        except Exception:
+            pass
+    _shared_client = None
+
+
+atexit.register(_shutdown_shared_client)
+
 
 class SitDeckConnector:
     """Lightweight connector for SitDeck public APIs."""
@@ -60,9 +80,10 @@ class SitDeckConnector:
         base_url: str = _SITDECK_BASE_URL,
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._base_url = base_url.rstrip("/")
+        validated_url = _validate_base_url(base_url)
+        self._base_url = validated_url.rstrip("/")
         self._client = client or _shared_sitdeck_client()
-        self._owns_client = client is not None
+        self._close_client = client is not None
 
     async def health(self) -> Dict[str, Any]:
         """Probe all known public endpoints and return aggregate status."""
@@ -122,8 +143,23 @@ class SitDeckConnector:
             return {"endpoint": name, "error": str(exc)}
 
     async def close(self) -> None:
-        if self._owns_client:
+        if self._close_client:
             await self._client.aclose()
+
+
+def _validate_base_url(url: str) -> str:
+    """Reject non-HTTPS or non-sitdeck base URLs to limit SSRF surface."""
+    allowed_hosts = {"sitdeck.com", "www.sitdeck.com"}
+    try:
+        parsed = httpx.URL(url)
+    except Exception as exc:
+        raise ValueError(f"Invalid SitDeck base URL: {url}") from exc
+    if parsed.scheme != "https":
+        raise ValueError(f"SitDeck base URL must use HTTPS: {url}")
+    host = parsed.host.lower()
+    if host not in allowed_hosts and not host.endswith(".test"):
+        raise ValueError(f"SitDeck base URL host not allowed: {host}")
+    return url
 
 
 @ToolRegistry.register("sitdeck")
@@ -171,9 +207,6 @@ class SitDeckTool(BaseTool):
         )
 
     def execute(self, action: str = "", **kwargs: Any) -> ToolResult:
-        import asyncio
-        import json
-
         async def _async_work() -> ToolResult:
             connector = SitDeckConnector()
             try:
@@ -202,11 +235,19 @@ class SitDeckTool(BaseTool):
 
         try:
             return asyncio.run(_async_work())
+        except RuntimeError as exc:
+            logger.error("SitDeck tool execute failed: %s", exc)
+            _async_error = "SitDeck tool cannot be called from an active async context"
+            return ToolResult(
+                tool_name="sitdeck",
+                content=json.dumps({"error": _async_error}),
+                success=False,
+            )
         except Exception as exc:
             logger.error("SitDeck tool execute failed: %s", exc)
             return ToolResult(
                 tool_name="sitdeck",
-                content=json.dumps({"error": str(exc)}),
+                content=json.dumps({"error": "SitDeck request failed"}),
                 success=False,
             )
 
