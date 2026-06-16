@@ -10,6 +10,7 @@ import { DataSourcesPage } from './pages/DataSourcesPage';
 import { LogsPage } from './pages/LogsPage';
 import { OsintPage } from './pages/OsintPage';
 import { LandhausPage } from './pages/LandhausPage';
+import { SitDeckPage } from './pages/SitDeckPage';
 import { CommandPalette } from './components/CommandPalette';
 import { SetupScreen } from './components/SetupScreen';
 import { Toaster } from './components/ui/sonner';
@@ -192,6 +193,7 @@ export default function App() {
           <Route path="osint" element={<OsintPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="landhaus" element={<LandhausPage />} />
+          <Route path="sitdeck" element={<SitDeckPage />} />
         </Route>
       </Routes>
       <Toaster position="bottom-right" />

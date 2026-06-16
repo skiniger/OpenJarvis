@@ -259,6 +259,12 @@ export async function fetchSitDeckHealth(): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchSitDeckEndpoint(endpoint: string): Promise<unknown> {
+  const res = await fetch(`${getBase()}/v1/sitdeck/${encodeURIComponent(endpoint)}`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchConnectors(): Promise<{ sources?: Array<{ id: string; name: string; type: string; status: string }>; total?: number }> {
   const res = await fetch(`${getBase()}/v1/connectors`);
   if (!res.ok) throw new Error(`Failed: ${res.status}`);

@@ -44,8 +44,8 @@
     --color-input-bg: #ffffff;
     --color-input-border: #d4d4d8;
 
-    --color-user-bubble: #0891b2;
-    --color-user-bubble-text: #ffffff;
+    --color-user-bubble: rgba(8, 145, 178, 0.14);
+    --color-user-bubble-text: #0a4a5a;
     --color-on-accent: #ffffff;
     --color-disabled-bg: #e4e4e7;
 

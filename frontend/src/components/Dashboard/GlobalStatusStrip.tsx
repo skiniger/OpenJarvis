@@ -19,7 +19,7 @@ export function GlobalStatusStrip() {
         fetchManagedAgents().catch(() => []),
         fetchOsintStats().catch(() => ({} as { total_alerts_today?: number })),
         fetchLandhausHealth().catch(() => ({} as { sources?: Record<string, { status: string }> })),
-        fetchTelemetry().catch(() => ({} as { total_tokens?: number })),
+        fetchTelemetry().catch(() => ({} as { total_tokens?: number; power_w?: number })),
       ]);
 
       const next: StatusBadge[] = [];
@@ -59,12 +59,15 @@ export function GlobalStatusStrip() {
       }
 
       if (telemetry.status === 'fulfilled') {
-        const data = telemetry.value as { total_tokens?: number };
+        const data = telemetry.value as { total_tokens?: number; power_w?: number };
         const tokens = data.total_tokens ?? 0;
+        const powerW = data.power_w ?? 0;
         next.push({
           icon: Zap,
           label: 'Inference',
-          value: `${formatTokens(tokens)} tokens`,
+          value: powerW > 0
+            ? `${formatWatts(powerW)} · ${formatTokens(tokens)} tokens`
+            : `${formatTokens(tokens)} tokens`,
           color: 'var(--color-accent)',
         });
       }
@@ -118,4 +121,9 @@ function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function formatWatts(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}kW`;
+  return `${Math.round(n)}W`;
 }
