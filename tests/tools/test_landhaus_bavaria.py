@@ -62,7 +62,9 @@ async def test_health_all_up():
         result = await connector.health()
         await connector.close()
 
-    assert result["website"] == {"status": "up", "status_code": 200}
+    assert result["website"]["status"] == "up"
+    assert result["website"]["status_code"] == 200
+    assert result["website"]["data"]["title"] is None
     assert result["deskline"] == {"status": "up"}
     assert result["ical"] == {"status": "up", "content_length": len("BEGIN:VCALENDAR")}
     assert result["vercel"] == {
@@ -90,7 +92,9 @@ async def test_health_demo_when_not_configured():
         result = await connector.health()
         await connector.close()
 
-    assert result["website"] == {"status": "up", "status_code": 200}
+    assert result["website"]["status"] == "up"
+    assert result["website"]["status_code"] == 200
+    assert result["website"]["data"]["title"] is None
     assert result["deskline"]["status"] == "demo"
     assert result["deskline"]["rooms_total"] == 12
     assert result["ical"]["status"] == "demo"

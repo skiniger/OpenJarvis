@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   fetchManagedAgents: vi.fn(),
   fetchAlerts: vi.fn(),
   fetchLandhausHealth: vi.fn(),
+  fetchLandhausWebsiteData: vi.fn(),
   fetchEnergy: vi.fn(),
   fetchTelemetry: vi.fn(),
   fetchTraces: vi.fn(),
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../lib/api', () => ({
   fetchManagedAgents: mocks.fetchManagedAgents,
   fetchLandhausHealth: mocks.fetchLandhausHealth,
+  fetchLandhausWebsiteData: mocks.fetchLandhausWebsiteData,
   fetchEnergy: mocks.fetchEnergy,
   fetchTelemetry: mocks.fetchTelemetry,
   fetchTraces: mocks.fetchTraces,
@@ -121,11 +123,18 @@ describe('LandhausBavariaWidget', () => {
         vercel: { status: 'ok', latency_ms: 60, deployment_state: 'ready' },
       },
     });
+    mocks.fetchLandhausWebsiteData.mockResolvedValue({
+      status: 'ok',
+      website: {
+        url: 'https://www.landhausbavaria.de',
+        data: { title: 'Landhaus Bavaria', opening_hours: { Mo: '11:30-14:00' }, weekday_specials: ['Burger Tuesday'] },
+      },
+    });
   });
 
   it('renders source statuses and room stats', async () => {
     render(<LandhausBavariaWidget />, { wrapper: Wrapper });
-    await waitFor(() => expect(screen.getByText('Deskline')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Landhaus Bavaria')).toBeInTheDocument());
     expect(screen.getByText('12')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
   });

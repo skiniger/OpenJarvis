@@ -253,6 +253,12 @@ export async function fetchLandhausHealth(): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchLandhausWebsiteData(): Promise<unknown> {
+  const res = await fetch(`${getBase()}/v1/landhaus/website-data`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchMonitoringMetrics(): Promise<unknown> {
   const res = await fetch(`${getBase()}/v1/monitoring/metrics`);
   if (!res.ok) throw new Error(`Failed: ${res.status}`);
