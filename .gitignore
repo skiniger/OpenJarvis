@@ -88,6 +88,12 @@ docs/superpowers/
 CLAUDE.md
 .claude/
 
+# Claude Flow session dumps
+.claude-flow/sessions/
+
+# TypeScript incremental build cache
+frontend/tsconfig.tsbuildinfo
+
 # Tauri auto-generated schemas
 **/src-tauri/gen/schemas/
 
