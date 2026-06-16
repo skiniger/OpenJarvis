@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, Clock, ChevronRight, ChevronDown } from 'lucide-react';
 import { fetchTraces } from '../../lib/api';
+import { WidgetCard, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
+
+const ACCENT = WIDGET_ACCENT.trace;
 
 interface TraceStepData {
   model?: string;
@@ -36,17 +39,21 @@ export function CompactTraceWidget() {
   const [traces, setTraces] = useState<TraceSummary[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
+      setLoading((prev) => prev && traces.length === 0);
       const data = await fetchTraces(5);
       const list = (data as { traces?: TraceSummary[] }).traces || [];
       setTraces(list.slice(0, 5));
       setError(null);
     } catch {
       setError('Cannot load traces');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [traces.length]);
 
   useEffect(() => {
     refresh();
@@ -55,16 +62,11 @@ export function CompactTraceWidget() {
   }, [refresh]);
 
   return (
-    <div className="hud-panel p-4" style={{ border: '1px solid var(--color-border)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="hud-label flex items-center gap-2">
-          <GitBranch size={12} style={{ color: 'var(--color-accent)' }} />
-          Recent Traces
-        </h3>
-      </div>
-
-      {error ? (
-        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+    <WidgetCard title="Recent Traces" icon={GitBranch} accent={ACCENT}>
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error ? (
+        <WidgetError message={error} onRetry={refresh} />
       ) : traces.length === 0 ? (
         <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>No traces yet</div>
       ) : (
@@ -111,6 +113,6 @@ export function CompactTraceWidget() {
           })}
         </div>
       )}
-    </div>
+    </WidgetCard>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Map, Database, Layers, Boxes } from 'lucide-react';
 import { fetchSitDeckHealth } from '../../lib/api';
-import { WidgetCard, StatusPill, WIDGET_ACCENT } from './shared';
+import { WidgetCard, StatusPill, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
 
 const ACCENT = WIDGET_ACCENT.sitdeck;
 
@@ -31,16 +31,20 @@ export function SitDeckWidget() {
   const navigate = useNavigate();
   const [data, setData] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
+      setLoading((prev) => prev && !data);
       const res = await fetchSitDeckHealth();
       setData(res as HealthResponse);
       setError(null);
     } catch {
       setError('SitDeck health check failed');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [data]);
 
   useEffect(() => {
     refresh();
@@ -56,7 +60,7 @@ export function SitDeckWidget() {
   const borderColor = anyDown ? 'var(--color-error)' : 'var(--color-border)';
   const isDemo = sitdeck?.demo || Object.values(sources).some((s) => s.demo);
 
-  const badge = sitdeck ? (
+  const badge = (
     <span
       className="px-1.5 py-0.5 rounded text-[10px] font-medium"
       style={{
@@ -67,7 +71,7 @@ export function SitDeckWidget() {
     >
       {isDemo ? `Demo ${totalUp}/${totalEndpoints}` : `${totalUp}/${totalEndpoints}`}
     </span>
-  ) : undefined;
+  );
 
   return (
     <WidgetCard
@@ -78,8 +82,10 @@ export function SitDeckWidget() {
       borderColor={borderColor}
       onClick={() => navigate('/sitdeck')}
     >
-      {error ? (
-        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error ? (
+        <WidgetError message={error} onRetry={refresh} />
       ) : (
         <>
           <div className="grid grid-cols-4 gap-2 mb-3">

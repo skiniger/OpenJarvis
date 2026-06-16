@@ -11,6 +11,9 @@ import {
 import { Zap, Activity, Thermometer, Hash } from 'lucide-react';
 import { fetchEnergy, fetchTelemetry } from '../../lib/api';
 import { useAppStore } from '../../lib/store';
+import { WidgetCard, MiniStat, TrendSparkline, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
+
+const ACCENT = WIDGET_ACCENT.energy;
 
 interface EnergySample {
   timestamp: string;
@@ -40,10 +43,13 @@ export function EnergyOverviewWidget() {
   const [energy, setEnergy] = useState<EnergyData | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryStats | null>(null);
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [powerHistory, setPowerHistory] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading((prev) => prev && !energy);
       const [energyRes, telRes] = await Promise.allSettled([
         fetchEnergy().catch(() => null),
         fetchTelemetry().catch(() => null),
@@ -53,12 +59,12 @@ export function EnergyOverviewWidget() {
         const data = energyRes.value as EnergyData;
         setEnergy(data);
         if (data.samples) {
-          setChartData(
-            data.samples.slice(-20).map((s) => ({
-              time: new Date(s.timestamp).toLocaleTimeString(),
-              power: Math.round(s.power_w * 10) / 10,
-            })),
-          );
+          const points = data.samples.slice(-20).map((s) => ({
+            time: new Date(s.timestamp).toLocaleTimeString(),
+            power: Math.round(s.power_w * 10) / 10,
+          }));
+          setChartData(points);
+          setPowerHistory((prev) => [...prev.slice(-19), data.avg_power_w ?? 0]);
         }
         setError(null);
       }
@@ -67,8 +73,10 @@ export function EnergyOverviewWidget() {
       }
     } catch {
       setError('Cannot connect');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [energy]);
 
   useEffect(() => {
     fetchData();
@@ -82,47 +90,26 @@ export function EnergyOverviewWidget() {
       ? { label: 'Warm', color: 'var(--color-warning)' }
       : { label: 'Hot', color: 'var(--color-error)' };
 
-  return (
-    <div className="hud-panel p-4" style={{ border: '1px solid var(--color-border)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="hud-label flex items-center gap-2">
-          <Zap size={12} style={{ color: 'var(--color-accent)' }} />
-          Energy / Inference
-        </h3>
-      </div>
+  const tokens = savings?.total_tokens ?? telemetry?.total_tokens ?? 0;
+  const requests = savings?.total_calls ?? telemetry?.total_requests ?? 0;
 
-      {error || !energy ? (
-        <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-          {error || 'awaiting telemetry…'}
-        </div>
+  return (
+    <WidgetCard title="Energy / Inference" icon={Zap} accent={ACCENT}>
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error || !energy ? (
+        <WidgetError message={error || 'awaiting telemetry…'} onRetry={fetchData} />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <MiniCard
-              icon={Zap}
-              label="Power"
-              value={`${(energy.avg_power_w ?? 0).toFixed(1)} W`}
-            />
-            <MiniCard
-              icon={Hash}
-              label="Tokens"
-              value={formatNumber(savings?.total_tokens ?? telemetry?.total_tokens ?? 0)}
-            />
-            <MiniCard
-              icon={Thermometer}
-              label="Thermal"
-              value={thermalStatus.label}
-              color={thermalStatus.color}
-            />
-            <MiniCard
-              icon={Activity}
-              label="Requests"
-              value={String(savings?.total_calls ?? telemetry?.total_requests ?? 0)}
-            />
+            <MiniStat icon={Zap} label="Power" value={`${(energy.avg_power_w ?? 0).toFixed(1)} W`} color={ACCENT} />
+            <MiniStat icon={Hash} label="Tokens" value={formatNumber(tokens)} color={ACCENT} />
+            <MiniStat icon={Thermometer} label="Thermal" value={thermalStatus.label} color={thermalStatus.color} />
+            <MiniStat icon={Activity} label="Requests" value={String(requests)} color={ACCENT} />
           </div>
 
           {chartData.length > 1 && (
-            <div className="h-28">
+            <div className="h-28 mb-2">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -137,36 +124,23 @@ export function EnergyOverviewWidget() {
                       color: 'var(--color-text)',
                     }}
                   />
-                  <Line type="monotone" dataKey="power" stroke="var(--color-accent)" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="power" stroke={ACCENT} strokeWidth={1.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
+
+          {powerHistory.length > 1 && (
+            <div>
+              <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
+                <span>Power trend</span>
+              </div>
+              <TrendSparkline data={powerHistory} color={ACCENT} width={240} height={28} />
+            </div>
+          )}
         </>
       )}
-    </div>
-  );
-}
-
-function MiniCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: typeof Zap;
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 p-2 rounded" style={{ background: 'var(--color-bg-secondary)' }}>
-      <Icon size={12} style={{ color: color || 'var(--color-accent)' }} />
-      <div>
-        <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{label}</div>
-        <div className="text-xs font-medium" style={{ color: color || 'var(--color-text)' }}>{value}</div>
-      </div>
-    </div>
+    </WidgetCard>
   );
 }
 

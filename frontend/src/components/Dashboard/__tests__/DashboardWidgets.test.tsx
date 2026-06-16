@@ -69,8 +69,9 @@ describe('AgentFleetWidget', () => {
   it('renders agent count and status badges', async () => {
     render(<AgentFleetWidget />, { wrapper: Wrapper });
     await waitFor(() => expect(screen.getByText('1 total')).toBeInTheDocument());
-    expect(screen.getByText('Running: 1')).toBeInTheDocument();
-    expect(screen.getByText('10 runs')).toBeInTheDocument();
+    expect(screen.getByText('Running')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
   });
 });
 

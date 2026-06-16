@@ -21,7 +21,7 @@ export function WidgetCard({
 }: WidgetCardProps) {
   return (
     <div
-      className="hud-panel p-0 overflow-hidden transition-colors"
+      className="hud-panel p-0 overflow-hidden transition-all duration-200 hover:translate-y-[-2px] hover:shadow-lg"
       onClick={onClick}
       style={{ border: `1px solid ${borderColor}`, cursor: onClick ? 'pointer' : 'default' }}
       onMouseEnter={(e) => {

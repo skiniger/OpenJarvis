@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Cpu, Thermometer, HardDrive, Activity } from 'lucide-react';
 import { fetchMonitoringMetrics } from '../../lib/api';
-import { WidgetCard, MiniStat, TrendSparkline, WIDGET_ACCENT } from './shared';
+import { WidgetCard, MiniStat, TrendSparkline, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
 
 const ACCENT = WIDGET_ACCENT.energy;
 const HISTORY_LIMIT = 20;
@@ -17,9 +17,11 @@ export function SystemTelemetryWidget() {
   const [latest, setLatest] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<MetricsSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
+      setLoading((prev) => prev && !latest);
       const res = await fetchMonitoringMetrics();
       const data = res as {
         timestamp?: string;
@@ -38,8 +40,10 @@ export function SystemTelemetryWidget() {
       setError(null);
     } catch {
       setError('Metrics unavailable');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [latest]);
 
   useEffect(() => {
     refresh();
@@ -60,17 +64,19 @@ export function SystemTelemetryWidget() {
 
   return (
     <WidgetCard title="System Telemetry" icon={Cpu} accent={ACCENT}>
-      {error ? (
-        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error ? (
+        <WidgetError message={error} onRetry={refresh} />
       ) : !latest ? (
         <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>awaiting telemetry…</div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <MiniCard icon={Activity} label="CPU" value={`${latest.cpu.percent.toFixed(0)}%`} color={ACCENT} />
-            <MiniCard icon={Thermometer} label="Thermal" value={thermal.label} color={thermal.color} />
-            <MiniCard icon={HardDrive} label="Memory" value={`${latest.memory.percent.toFixed(0)}%`} color={ACCENT} />
-            <MiniCard icon={HardDrive} label="Disk" value={`${latest.disk.percent.toFixed(0)}%`} color={ACCENT} />
+            <MiniStat icon={Activity} label="CPU" value={`${latest.cpu.percent.toFixed(0)}%`} color={ACCENT} />
+            <MiniStat icon={Thermometer} label="Thermal" value={thermal.label} color={thermal.color} />
+            <MiniStat icon={HardDrive} label="Memory" value={`${latest.memory.percent.toFixed(0)}%`} color={ACCENT} />
+            <MiniStat icon={HardDrive} label="Disk" value={`${latest.disk.percent.toFixed(0)}%`} color={ACCENT} />
           </div>
 
           {cpuHistory.length > 1 && (
@@ -94,27 +100,5 @@ export function SystemTelemetryWidget() {
         </>
       )}
     </WidgetCard>
-  );
-}
-
-function MiniCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: typeof Cpu;
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 p-2 rounded" style={{ background: 'var(--color-bg-secondary)' }}>
-      <Icon size={12} style={{ color: color || 'var(--color-accent)' }} />
-      <div>
-        <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{label}</div>
-        <div className="text-xs font-medium" style={{ color: color || 'var(--color-text)' }}>{value}</div>
-      </div>
-    </div>
   );
 }

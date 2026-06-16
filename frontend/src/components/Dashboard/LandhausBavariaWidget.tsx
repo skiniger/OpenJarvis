@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Hotel, Globe, Calendar, Server, Clock, Utensils } from 'lucide-react';
 import { fetchLandhausHealth, fetchLandhausWebsiteData } from '../../lib/api';
-import { WidgetCard, StatusPill, MiniStat, TrendSparkline, WIDGET_ACCENT } from './shared';
+import { WidgetCard, StatusPill, MiniStat, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
 
 const ACCENT = WIDGET_ACCENT.landhaus;
 
@@ -52,9 +52,11 @@ export function LandhausBavariaWidget() {
   const [data, setData] = useState<HealthResponse | null>(null);
   const [website, setWebsite] = useState<WebsiteResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
+      setLoading((prev) => prev && !data && !website);
       const [healthRes, websiteRes] = await Promise.all([
         fetchLandhausHealth(),
         fetchLandhausWebsiteData(),
@@ -64,8 +66,10 @@ export function LandhausBavariaWidget() {
       setError(null);
     } catch {
       setError('Health check failed');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [data, website]);
 
   useEffect(() => {
     refresh();
@@ -107,8 +111,10 @@ export function LandhausBavariaWidget() {
       borderColor={borderColor}
       onClick={() => navigate('/landhaus')}
     >
-      {error ? (
-        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error ? (
+        <WidgetError message={error} onRetry={refresh} />
       ) : (
         <>
           <div className="grid grid-cols-4 gap-2 mb-3">

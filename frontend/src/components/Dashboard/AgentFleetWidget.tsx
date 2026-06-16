@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router';
 import { Bot, AlertTriangle, Activity, DollarSign, Play, Pause } from 'lucide-react';
 import { fetchManagedAgents, pauseManagedAgent, resumeManagedAgent, runManagedAgent } from '../../lib/api';
 import type { ManagedAgent } from '../../lib/api';
+import { WidgetCard, MiniStat, WIDGET_ACCENT, WidgetError, WidgetSkeleton } from './shared';
+
+const ACCENT = WIDGET_ACCENT.agent;
 
 const STATUS_ORDER = ['error', 'needs_attention', 'stalled', 'running', 'paused', 'idle', 'archived', 'budget_exceeded'];
 
@@ -32,17 +35,21 @@ export function AgentFleetWidget() {
   const navigate = useNavigate();
   const [agents, setAgents] = useState<ManagedAgent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
+      setLoading((prev) => prev && agents.length === 0);
       const data = await fetchManagedAgents();
       setAgents(data);
       setError(null);
     } catch {
       setError('Failed to load agents');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [agents.length]);
 
   useEffect(() => {
     refresh();
@@ -94,53 +101,82 @@ export function AgentFleetWidget() {
 
   const topAgents = agents.slice(0, 3);
 
-  return (
-    <div
-      className="hud-panel p-4 cursor-pointer transition-colors"
-      onClick={() => navigate('/agents')}
-      style={{ border: `1px solid ${borderColor}` }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderColor)}
+  const badge = agents.length > 0 ? (
+    <span
+      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+      style={{ background: `${ACCENT}22`, color: ACCENT, border: `1px solid ${ACCENT}40` }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="hud-label flex items-center gap-2">
-          <Bot size={12} style={{ color: 'var(--color-accent)' }} />
-          Agent Fleet
-        </h3>
-        <span className="text-xs font-medium" style={{ color: 'var(--color-text-tertiary)' }}>
-          {agents.length} total
-        </span>
-      </div>
+      {agents.length} total
+    </span>
+  ) : undefined;
 
-      {error ? (
-        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+  return (
+    <WidgetCard
+      title="Agent Fleet"
+      icon={Bot}
+      accent={ACCENT}
+      badge={badge}
+      borderColor={borderColor}
+      onClick={() => navigate('/agents')}
+    >
+      {loading ? (
+        <WidgetSkeleton />
+      ) : error ? (
+        <WidgetError message={error} onRetry={refresh} />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {STATUS_ORDER.filter((s) => counts[s] > 0).map((s) => {
-              const meta = STATUS_META[s];
-              return (
-                <span
-                  key={s}
-                  className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ background: meta.color + '20', color: meta.color }}
-                >
-                  {meta.label}: {counts[s]}
-                </span>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <MiniStat
+              icon={Activity}
+              label="Running"
+              value={String(counts.running)}
+              color={counts.running > 0 ? 'var(--color-accent)' : 'var(--color-text-tertiary)'}
+            />
+            <MiniStat
+              icon={AlertTriangle}
+              label="Issues"
+              value={String(counts.error + counts.needs_attention + counts.stalled)}
+              color={counts.error + counts.needs_attention + counts.stalled > 0 ? 'var(--color-error)' : 'var(--color-success)'}
+            />
+            <MiniStat
+              icon={DollarSign}
+              label="Cost"
+              value={`$${agents.reduce((sum, a) => sum + (a.total_cost ?? 0), 0).toFixed(4)}`}
+              color={ACCENT}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <MiniStat
+              icon={Activity}
+              label="Runs"
+              value={String(agents.reduce((sum, a) => sum + (a.total_runs ?? 0), 0))}
+              color={ACCENT}
+            />
+            <MiniStat
+              icon={Pause}
+              label="Paused"
+              value={String(counts.paused)}
+              color={counts.paused > 0 ? 'var(--color-warning)' : 'var(--color-text-tertiary)'}
+            />
+            <MiniStat
+              icon={Bot}
+              label="Idle"
+              value={String(counts.idle)}
+              color={counts.idle > 0 ? 'var(--color-success)' : 'var(--color-text-tertiary)'}
+            />
           </div>
 
           {mostRecent && (
             <div className="text-[11px] mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              Last activity: <span style={{ color: 'var(--color-text)' }}>{mostRecent.name}</span>{' '}
+              Last: <span style={{ color: 'var(--color-text)' }}>{mostRecent.name}</span>{' '}
               {formatRelativeTime(mostRecent.last_run_at)}
             </div>
           )}
 
           {budgetWarnings.length > 0 && (
             <div
-              className="flex items-center gap-1.5 text-[11px]"
+              className="flex items-center gap-1.5 text-[11px] mb-2"
               style={{ color: 'var(--color-warning)' }}
             >
               <AlertTriangle size={11} />
@@ -149,7 +185,7 @@ export function AgentFleetWidget() {
           )}
 
           {topAgents.length > 0 && (
-            <div className="mt-3 pt-2 flex flex-col gap-1.5" style={{ borderTop: '1px solid var(--color-border)' }}>
+            <div className="flex flex-col gap-1.5 pt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
               {topAgents.map((a) => {
                 const canRun = a.status === 'idle' || a.status === 'paused';
                 const canPause = a.status === 'running';
@@ -190,19 +226,8 @@ export function AgentFleetWidget() {
               })}
             </div>
           )}
-
-          <div className="mt-3 pt-2 flex gap-3 text-[11px]" style={{ borderTop: '1px solid var(--color-border)' }}>
-            <span className="flex items-center gap-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              <Activity size={10} />
-              {agents.reduce((sum, a) => sum + (a.total_runs ?? 0), 0)} runs
-            </span>
-            <span className="flex items-center gap-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              <DollarSign size={10} />
-              ${agents.reduce((sum, a) => sum + (a.total_cost ?? 0), 0).toFixed(4)} total
-            </span>
-          </div>
         </>
       )}
-    </div>
+    </WidgetCard>
   );
 }
