@@ -253,6 +253,12 @@ export async function fetchLandhausHealth(): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchMonitoringMetrics(): Promise<unknown> {
+  const res = await fetch(`${getBase()}/v1/monitoring/metrics`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchSitDeckHealth(): Promise<unknown> {
   const res = await fetch(`${getBase()}/v1/sitdeck/health`);
   if (!res.ok) throw new Error(`Failed: ${res.status}`);

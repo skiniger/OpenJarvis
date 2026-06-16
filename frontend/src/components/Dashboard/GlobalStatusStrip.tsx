@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Bot, Shield, Hotel, Zap } from 'lucide-react';
-import { fetchManagedAgents, fetchOsintStats, fetchLandhausHealth, fetchTelemetry } from '../../lib/api';
+import { Bot, Shield, Hotel, Zap, Activity } from 'lucide-react';
+import { fetchManagedAgents, fetchOsintStats, fetchLandhausHealth, fetchTelemetry, fetchMonitoringMetrics } from '../../lib/api';
 
 interface StatusBadge {
   icon: typeof Bot;
@@ -15,11 +15,12 @@ export function GlobalStatusStrip() {
 
   const refresh = useCallback(async () => {
     try {
-      const [agents, osint, landhaus, telemetry] = await Promise.allSettled([
+      const [agents, osint, landhaus, telemetry, monitoring] = await Promise.allSettled([
         fetchManagedAgents().catch(() => []),
         fetchOsintStats().catch(() => ({} as { total_alerts_today?: number })),
         fetchLandhausHealth().catch(() => ({} as { sources?: Record<string, { status: string }> })),
         fetchTelemetry().catch(() => ({} as { total_tokens?: number; power_w?: number })),
+        fetchMonitoringMetrics().catch(() => ({} as { cpu?: { percent?: number }; memory?: { percent?: number } })),
       ]);
 
       const next: StatusBadge[] = [];
@@ -69,6 +70,20 @@ export function GlobalStatusStrip() {
             ? `${formatWatts(powerW)} · ${formatTokens(tokens)} tokens`
             : `${formatTokens(tokens)} tokens`,
           color: 'var(--color-accent)',
+        });
+      }
+
+      if (monitoring.status === 'fulfilled') {
+        const data = monitoring.value as { cpu?: { percent?: number }; memory?: { percent?: number } };
+        const cpu = data.cpu?.percent ?? 0;
+        const ram = data.memory?.percent ?? 0;
+        const cpuColor = cpu > 80 ? 'var(--color-error)' : cpu > 50 ? 'var(--color-warning)' : 'var(--color-accent)';
+        const ramColor = ram > 80 ? 'var(--color-error)' : ram > 50 ? 'var(--color-warning)' : 'var(--color-success)';
+        next.push({
+          icon: Activity,
+          label: 'Host',
+          value: `CPU ${Math.round(cpu)}% · RAM ${Math.round(ram)}%`,
+          color: cpu > 80 || ram > 80 ? 'var(--color-error)' : cpu > 50 || ram > 50 ? 'var(--color-warning)' : 'var(--color-success)',
         });
       }
 
