@@ -153,16 +153,30 @@ memory_router = APIRouter(prefix="/v1/memory", tags=["memory"])
 
 
 def _get_memory_backend(request: Request):
-    """Return the app-level memory backend, falling back to a fresh SQLiteMemory."""
-    backend = getattr(request.app.state, "memory_backend", None)
-    if backend is None:
-        try:
-            from openjarvis.tools.storage.sqlite import SQLiteMemory
+    """Return the app-level memory backend.
 
-            backend = SQLiteMemory()
-        except Exception:
-            return None
-    return backend
+    Order of preference:
+      1. Existing backend on app.state.
+      2. SQLiteMemory (requires compiled Rust extension).
+      3. SimpleMemory — zero-dependency in-memory fallback.
+    """
+    backend = getattr(request.app.state, "memory_backend", None)
+    if backend is not None:
+        return backend
+    try:
+        from openjarvis.tools.storage.sqlite import SQLiteMemory
+        backend = SQLiteMemory()
+        request.app.state.memory_backend = backend
+        return backend
+    except Exception:
+        pass
+    try:
+        from openjarvis.tools.storage._stubs import SimpleMemory
+        backend = SimpleMemory()
+        request.app.state.memory_backend = backend
+        return backend
+    except Exception:
+        return None
 
 
 @memory_router.post("/store")

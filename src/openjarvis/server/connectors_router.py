@@ -117,11 +117,13 @@ def create_connectors_router():
         except Exception:
             pass
 
+        _connected = instance.is_connected()
         return {
             "connector_id": connector_id,
             "display_name": getattr(instance, "display_name", connector_id),
             "auth_type": getattr(instance, "auth_type", "unknown"),
-            "connected": instance.is_connected(),
+            "connected": _connected,
+            "status": "connected" if _connected else "disconnected",
             "chunks": chunks,
         }
 
@@ -234,6 +236,7 @@ def create_connectors_router():
                         "display_name": key,
                         "auth_type": "unknown",
                         "connected": False,
+                        "status": "disconnected",
                     }
                 )
         return {"connectors": results}

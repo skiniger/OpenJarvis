@@ -384,22 +384,21 @@ def serve(
         except Exception as exc:
             logger.debug("Agent scheduler init failed: %s", exc)
 
-    # Set up memory backend for context injection
+    # Set up memory backend (always initialise so /v1/memory/* endpoints work)
     memory_backend = None
-    if config.agent.context_from_memory:
-        try:
-            import openjarvis.tools.storage  # noqa: F401
-            from openjarvis.core.registry import MemoryRegistry
+    try:
+        import openjarvis.tools.storage  # noqa: F401
+        from openjarvis.core.registry import MemoryRegistry
 
-            mem_key = config.memory.default_backend
-            if MemoryRegistry.contains(mem_key):
-                memory_backend = MemoryRegistry.create(
-                    mem_key,
-                    db_path=config.memory.db_path,
-                )
-                console.print("  Memory:    [cyan]active[/cyan]")
-        except Exception as exc:
-            logger.debug("Memory backend init failed: %s", exc)
+        mem_key = config.memory.default_backend
+        if MemoryRegistry.contains(mem_key):
+            memory_backend = MemoryRegistry.create(
+                mem_key,
+                db_path=config.memory.db_path,
+            )
+            console.print("  Memory:    [cyan]active[/cyan]")
+    except Exception as exc:
+        logger.debug("Memory backend init failed: %s", exc)
 
     # --- Channel Gateway: API key, sessions, ChannelBridge ---
     import os as _os

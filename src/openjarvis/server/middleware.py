@@ -49,7 +49,10 @@ def create_security_middleware() -> Any:
                 "camera=(), microphone=(), geolocation=()"
             )
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "font-src 'self' data:; "
+                "img-src 'self' data:; "
+                "connect-src 'self' http://localhost:11434"
             )
             return response
 
