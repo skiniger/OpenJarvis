@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Hotel, Globe, Calendar, Server, Clock, Utensils } from 'lucide-react';
 import { fetchLandhausHealth, fetchLandhausWebsiteData } from '../../lib/api';
+import { WidgetCard, StatusPill, MiniStat, TrendSparkline, WIDGET_ACCENT } from './shared';
 
-const GOLD = '#D4AF37';
-const GOLD_LIGHT = '#C9A227';
+const ACCENT = WIDGET_ACCENT.landhaus;
 
 interface SourceHealth {
   status: string;
@@ -89,157 +89,92 @@ export function LandhausBavariaWidget() {
   const todayHours = site?.opening_hours?.[today] || site?.opening_hours?.['Mo'];
   const nextSpecial = site?.weekday_specials?.[0];
 
+  const badge = deskline?.isDemo ? (
+    <span
+      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+      style={{ background: `${ACCENT}22`, color: ACCENT, border: `1px solid ${ACCENT}40` }}
+    >
+      Demo
+    </span>
+  ) : undefined;
+
   return (
-    <div
-      className="hud-panel p-0 cursor-pointer overflow-hidden transition-colors"
+    <WidgetCard
+      title="Landhaus Bavaria"
+      icon={Hotel}
+      accent={ACCENT}
+      badge={badge}
+      borderColor={borderColor}
       onClick={() => navigate('/landhaus')}
-      style={{ border: `1px solid ${borderColor}` }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = GOLD)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderColor)}
     >
-      <div
-        className="px-4 py-3 flex items-center justify-between"
-        style={{
-          background: `linear-gradient(135deg, ${GOLD}22 0%, ${GOLD_LIGHT}11 100%)`,
-          borderBottom: `1px solid ${GOLD}33`,
-        }}
-      >
-        <h3 className="hud-label flex items-center gap-2 font-semibold">
-          <Hotel size={14} style={{ color: GOLD }} />
-          <span style={{ color: GOLD }}>Landhaus Bavaria</span>
-        </h3>
-        {deskline?.isDemo && (
-          <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-            style={{ background: `${GOLD}22`, color: GOLD, border: `1px solid ${GOLD}40` }}
-          >
-            Demo
-          </span>
-        )}
-      </div>
+      {error ? (
+        <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <StatusPill icon={Globe} label="Web" status={sources.website?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Server} label="Desk" status={deskline?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Calendar} label="iCal" status={ical?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Globe} label="Vercel" status={vercel?.status || 'unknown'} accent={ACCENT} />
+          </div>
 
-      <div className="p-4">
-        {error ? (
-          <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
-        ) : (
-          <>
-            <div className="grid grid-cols-4 gap-2 mb-3">
-              <StatusPill icon={Globe} label="Web" status={sources.website?.status || 'unknown'} />
-              <StatusPill icon={Server} label="Desk" status={deskline?.status || 'unknown'} />
-              <StatusPill icon={Calendar} label="iCal" status={ical?.status || 'unknown'} />
-              <StatusPill icon={Globe} label="Vercel" status={vercel?.status || 'unknown'} />
-            </div>
-
-            {deskline && (
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
-                  <span>Room occupancy</span>
-                  <span>{occupancyRate}%</span>
-                </div>
+          {deskline && (
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
+                <span>Room occupancy</span>
+                <span>{occupancyRate}%</span>
+              </div>
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--color-bg-secondary)' }}
+              >
                 <div
-                  className="h-1.5 rounded-full overflow-hidden"
-                  style={{ background: 'var(--color-bg-secondary)' }}
-                >
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${occupancyRate}%`,
-                      background: occupancyRate > 80
-                        ? 'var(--color-error)'
-                        : occupancyRate > 50
-                          ? GOLD_LIGHT
-                          : 'var(--color-success)',
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-2 mt-2 text-center">
-                  <MiniStat label="Total" value={deskline.rooms_total ?? '—'} />
-                  <MiniStat label="Occupied" value={deskline.rooms_occupied ?? '—'} />
-                  <MiniStat label="Available" value={deskline.rooms_available ?? '—'} />
-                </div>
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${occupancyRate}%`,
+                    background: occupancyRate > 80 ? 'var(--color-error)' : occupancyRate > 50 ? ACCENT : 'var(--color-success)',
+                  }}
+                />
               </div>
-            )}
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <MiniStat label="Total" value={deskline.rooms_total ?? '—'} />
+                <MiniStat label="Occupied" value={deskline.rooms_occupied ?? '—'} />
+                <MiniStat label="Available" value={deskline.rooms_available ?? '—'} />
+              </div>
+            </div>
+          )}
 
-            {(todayHours || nextSpecial) && (
-              <div className="grid grid-cols-2 gap-2">
-                {todayHours && (
-                  <div
-                    className="p-2 rounded text-[10px]"
-                    style={{ background: 'var(--color-bg-secondary)' }}
-                  >
-                    <div className="flex items-center gap-1 mb-0.5" style={{ color: GOLD }}>
-                      <Clock size={10} />
-                      <span>Heute</span>
-                    </div>
-                    <div style={{ color: 'var(--color-text)' }}>{todayHours}</div>
+          {(todayHours || nextSpecial) && (
+            <div className="grid grid-cols-2 gap-2">
+              {todayHours && (
+                <div className="p-2 rounded text-[10px]" style={{ background: 'var(--color-bg-secondary)' }}>
+                  <div className="flex items-center gap-1 mb-0.5" style={{ color: ACCENT }}>
+                    <Clock size={10} />
+                    <span>Heute</span>
                   </div>
-                )}
-                {nextSpecial && (
-                  <div
-                    className="p-2 rounded text-[10px]"
-                    style={{ background: 'var(--color-bg-secondary)' }}
-                  >
-                    <div className="flex items-center gap-1 mb-0.5" style={{ color: GOLD }}>
-                      <Utensils size={10} />
-                      <span>Special</span>
-                    </div>
-                    <div className="truncate" style={{ color: 'var(--color-text)' }}>{nextSpecial}</div>
+                  <div style={{ color: 'var(--color-text)' }}>{todayHours}</div>
+                </div>
+              )}
+              {nextSpecial && (
+                <div className="p-2 rounded text-[10px]" style={{ background: 'var(--color-bg-secondary)' }}>
+                  <div className="flex items-center gap-1 mb-0.5" style={{ color: ACCENT }}>
+                    <Utensils size={10} />
+                    <span>Special</span>
                   </div>
-                )}
-              </div>
-            )}
+                  <div className="truncate" style={{ color: 'var(--color-text)' }}>{nextSpecial}</div>
+                </div>
+              )}
+            </div>
+          )}
 
-            {vercel && (
-              <div className="mt-2 text-[9px] text-center" style={{ color: 'var(--color-text-tertiary)' }}>
-                Vercel: {vercel.deployment_state || 'unknown'}
-                {vercel.last_deploy && ` · ${new Date(vercel.last_deploy).toLocaleDateString()}`}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatusPill({
-  icon: Icon,
-  label,
-  status,
-}: {
-  icon: typeof Globe;
-  label: string;
-  status: string;
-}) {
-  const color =
-    status === 'ok'
-      ? 'var(--color-success)'
-      : status === 'warning' || status === 'demo'
-        ? GOLD
-        : 'var(--color-error)';
-
-  return (
-    <div
-      className="flex flex-col items-center gap-1 p-2 rounded"
-      style={{ background: 'var(--color-bg-secondary)' }}
-    >
-      <Icon size={14} style={{ color }} />
-      <span className="text-[10px] font-medium" style={{ color }}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="p-1.5 rounded" style={{ background: 'var(--color-bg-secondary)' }}>
-      <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
-        {label}
-      </div>
-      <div className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-        {value}
-      </div>
-    </div>
+          {vercel && (
+            <div className="mt-2 text-[9px] text-center" style={{ color: 'var(--color-text-tertiary)' }}>
+              Vercel: {vercel.deployment_state || 'unknown'}
+              {vercel.last_deploy && ` · ${new Date(vercel.last_deploy).toLocaleDateString()}`}
+            </div>
+          )}
+        </>
+      )}
+    </WidgetCard>
   );
 }

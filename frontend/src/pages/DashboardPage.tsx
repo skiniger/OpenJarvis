@@ -3,6 +3,7 @@ import { OsintWatchdogWidget } from '../components/Dashboard/OsintWatchdogWidget
 import { LandhausBavariaWidget } from '../components/Dashboard/LandhausBavariaWidget';
 import { SitDeckWidget } from '../components/Dashboard/SitDeckWidget';
 import { EnergyOverviewWidget } from '../components/Dashboard/EnergyOverviewWidget';
+import { SystemTelemetryWidget } from '../components/Dashboard/SystemTelemetryWidget';
 import { CompactTraceWidget } from '../components/Dashboard/CompactTraceWidget';
 import { GlobalStatusStrip } from '../components/Dashboard/GlobalStatusStrip';
 import { DataSourcesMiniWidget } from '../components/Dashboard/DataSourcesMiniWidget';
@@ -30,13 +31,14 @@ export function DashboardPage() {
 
         <GlobalStatusStrip />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <AgentFleetWidget />
           <OsintWatchdogWidget />
           <DataSourcesMiniWidget />
           <LandhausBavariaWidget />
           <SitDeckWidget />
           <EnergyOverviewWidget />
+          <SystemTelemetryWidget />
         </div>
 
         <CompactTraceWidget />

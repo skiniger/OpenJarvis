@@ -2,18 +2,23 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Map, Database, Layers, Boxes } from 'lucide-react';
 import { fetchSitDeckHealth } from '../../lib/api';
+import { WidgetCard, StatusPill, WIDGET_ACCENT } from './shared';
+
+const ACCENT = WIDGET_ACCENT.sitdeck;
 
 interface EndpointHealth {
   status: string;
   status_code?: number;
   size?: number;
   error?: string;
+  demo?: boolean;
 }
 
 interface SitDeckHealth {
   status: string;
   total_up: number;
   total_endpoints: number;
+  demo?: boolean;
   sources: Record<string, EndpointHealth>;
 }
 
@@ -49,58 +54,39 @@ export function SitDeckWidget() {
   const totalEndpoints = sitdeck?.total_endpoints ?? 0;
   const anyDown = Object.values(sources).some((s) => s.status !== 'up');
   const borderColor = anyDown ? 'var(--color-error)' : 'var(--color-border)';
+  const isDemo = sitdeck?.demo || Object.values(sources).some((s) => s.demo);
+
+  const badge = sitdeck ? (
+    <span
+      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+      style={{
+        background: anyDown ? 'var(--color-error-bg)' : `${ACCENT}22`,
+        color: anyDown ? 'var(--color-error)' : ACCENT,
+        border: `1px solid ${anyDown ? 'var(--color-error)' : ACCENT}40`,
+      }}
+    >
+      {isDemo ? `Demo ${totalUp}/${totalEndpoints}` : `${totalUp}/${totalEndpoints}`}
+    </span>
+  ) : undefined;
 
   return (
-    <div
-      className="hud-panel p-4 cursor-pointer transition-colors"
+    <WidgetCard
+      title="SitDeck"
+      icon={Map}
+      accent={ACCENT}
+      badge={badge}
+      borderColor={borderColor}
       onClick={() => navigate('/sitdeck')}
-      style={{ border: `1px solid ${borderColor}` }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderColor)}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="hud-label flex items-center gap-2">
-          <Map size={12} style={{ color: '#a78bfa' }} />
-          SitDeck
-        </h3>
-        {sitdeck && (
-          <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-            style={{
-              background: anyDown ? 'var(--color-error-bg)' : '#a78bfa20',
-              color: anyDown ? 'var(--color-error)' : '#a78bfa',
-            }}
-          >
-            {totalUp}/{totalEndpoints}
-          </span>
-        )}
-      </div>
-
       {error ? (
         <div className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</div>
       ) : (
         <>
           <div className="grid grid-cols-4 gap-2 mb-3">
-            <EndpointPill
-              icon={Boxes}
-              label="Widgets"
-              status={sources.widgets?.status || 'unknown'}
-            />
-            <EndpointPill
-              icon={Database}
-              label="Sources"
-              status={sources.data_sources?.status || 'unknown'}
-            />
-            <EndpointPill
-              icon={Layers}
-              label="Maps"
-              status={sources.map_capabilities?.status || 'unknown'}
-            />
-            <EndpointPill
-              icon={Map}
-              label="Plans"
-              status={sources.plans?.status || 'unknown'}
-            />
+            <StatusPill icon={Boxes} label="Widgets" status={sources.widgets?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Database} label="Sources" status={sources.data_sources?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Layers} label="Maps" status={sources.map_capabilities?.status || 'unknown'} accent={ACCENT} />
+            <StatusPill icon={Map} label="Plans" status={sources.plans?.status || 'unknown'} accent={ACCENT} />
           </div>
 
           {sitdeck && (
@@ -108,39 +94,11 @@ export function SitDeckWidget() {
               {totalUp === totalEndpoints
                 ? 'All SitDeck endpoints reachable'
                 : `${totalEndpoints - totalUp} endpoint(s) unreachable`}
+              {isDemo && ' · demo mode'}
             </div>
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function EndpointPill({
-  icon: Icon,
-  label,
-  status,
-}: {
-  icon: typeof Map;
-  label: string;
-  status: string;
-}) {
-  const color =
-    status === 'up'
-      ? 'var(--color-success)'
-      : status === 'degraded'
-        ? 'var(--color-warning)'
-        : 'var(--color-error)';
-
-  return (
-    <div
-      className="flex flex-col items-center gap-1 p-2 rounded"
-      style={{ background: 'var(--color-bg-secondary)' }}
-    >
-      <Icon size={14} style={{ color }} />
-      <span className="text-[10px] font-medium" style={{ color }}>
-        {label}
-      </span>
-    </div>
+    </WidgetCard>
   );
 }
