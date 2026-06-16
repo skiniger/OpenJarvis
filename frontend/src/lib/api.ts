@@ -253,16 +253,36 @@ export async function fetchLandhausHealth(): Promise<unknown> {
   return res.json();
 }
 
+export async function fetchSitDeckHealth(): Promise<unknown> {
+  const res = await fetch(`${getBase()}/v1/sitdeck/health`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchConnectors(): Promise<{ sources?: Array<{ id: string; name: string; type: string; status: string }>; total?: number }> {
   const res = await fetch(`${getBase()}/v1/connectors`);
   if (!res.ok) throw new Error(`Failed: ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  // Map backend "connectors" field to frontend "sources" shape
+  const raw = (data.connectors || []).map((c: any) => ({
+    id: c.connector_id || c.id || '',
+    name: c.display_name || c.name || c.connector_id || '',
+    type: c.auth_type || c.type || 'unknown',
+    status: c.connected ? 'connected' : (c.status || 'disconnected'),
+  }));
+  return { sources: raw, total: raw.length };
 }
 
 export async function fetchOsintStats(): Promise<{ total_scans_today?: number; total_alerts_today?: number; watchdog_status?: string; favorites_count?: number }> {
   const res = await fetch(`${getBase()}/v1/osint/dashboard/stats`);
   if (!res.ok) throw new Error(`Failed: ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  return {
+    total_scans_today: data.total_scans ?? data.total_execs ?? 0,
+    total_alerts_today: data.total_actions ?? 0,
+    watchdog_status: data.success_rate >= 90 ? 'active' : 'warning',
+    favorites_count: data.unique_targets ?? 0,
+  };
 }
 
 // ---------------------------------------------------------------------------

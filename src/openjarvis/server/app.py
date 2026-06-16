@@ -21,6 +21,7 @@ from openjarvis.server.landhaus_router import router as landhaus_router
 from openjarvis.server.osint_router import router as osint_router
 from openjarvis.server.research_router import router as research_router
 from openjarvis.server.routes import router
+from openjarvis.server.sitdeck_router import router as sitdeck_router
 from openjarvis.server.upload_router import router as upload_router
 
 logger = logging.getLogger(__name__)
@@ -334,6 +335,16 @@ def create_app(
     )
     app.state.channel_bridge = channel_bridge
     app.state.config = config
+    if memory_backend is None:
+        try:
+            import openjarvis.tools.storage  # noqa: F401
+            from openjarvis.core.registry import MemoryRegistry
+            from openjarvis.tools.storage.sqlite import SQLiteMemory
+
+            if MemoryRegistry.contains("sqlite"):
+                memory_backend = SQLiteMemory()
+        except Exception:
+            pass
     app.state.memory_backend = memory_backend
     app.state.speech_backend = speech_backend
 
@@ -396,6 +407,7 @@ def create_app(
     app.include_router(comparison_router)
     app.include_router(osint_router)
     app.include_router(landhaus_router)
+    app.include_router(sitdeck_router)
 
     app.include_router(create_connectors_router())
     app.include_router(create_digest_router())
