@@ -43,3 +43,21 @@ async def landhaus_availability(date_from: str, date_to: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:
         await connector.close()
+
+
+@router.get("/v1/landhaus/website-data", tags=["landhaus"])
+async def landhaus_website_data() -> dict[str, Any]:
+    """Return scraped public website data for Landhaus Bavaria."""
+    connector = LandhausBavariaConnector()
+    try:
+        result = await connector.website_data()
+        if "error" in result:
+            raise HTTPException(status_code=503, detail=result["error"])
+        return {"status": "ok", "website": result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Landhaus website data query failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        await connector.close()

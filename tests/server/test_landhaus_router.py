@@ -134,3 +134,47 @@ class TestLandhausAvailability:
         assert response.status_code == 500
         assert "network down" in response.json()["detail"]
         mock_connector.close.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# /v1/landhaus/website-data
+# ---------------------------------------------------------------------------
+
+
+class TestLandhausWebsiteData:
+    """Tests for GET /v1/landhaus/website-data."""
+
+    def test_website_data_ok(self, client: TestClient) -> None:
+        mock_connector = AsyncMock()
+        mock_connector.website_data.return_value = {
+            "url": "https://www.landhausbavaria.de",
+            "data": {"title": "Landhaus Bavaria"},
+        }
+        mock_connector.close = AsyncMock()
+
+        with patch(
+            "openjarvis.server.landhaus_router.LandhausBavariaConnector",
+            return_value=mock_connector,
+        ):
+            response = client.get("/v1/landhaus/website-data")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["website"]["data"]["title"] == "Landhaus Bavaria"
+        mock_connector.close.assert_awaited_once()
+
+    def test_website_data_connector_error(self, client: TestClient) -> None:
+        mock_connector = AsyncMock()
+        mock_connector.website_data.return_value = {"error": "Website unreachable"}
+        mock_connector.close = AsyncMock()
+
+        with patch(
+            "openjarvis.server.landhaus_router.LandhausBavariaConnector",
+            return_value=mock_connector,
+        ):
+            response = client.get("/v1/landhaus/website-data")
+
+        assert response.status_code == 503
+        assert "Website unreachable" in response.json()["detail"]
+        mock_connector.close.assert_awaited_once()
